@@ -10,6 +10,7 @@ from .claimextractor import extract_claims_configurable
 from .retrieval import create_retriever
 from .validators import create_validator
 from .rubric import detect_missing_claims, calculate_completeness_score
+from .arbitration import ArbitrationEngine
 
 
 class Checker:
@@ -49,6 +50,10 @@ class Checker:
         self._retriever_cache = {}
         self._cache_hits = 0
         self._cache_misses = 0
+        
+        # Initialize arbitration engine
+        aggregation_config = self.config.get_policy("aggregation", {})
+        self.arbitration_engine = ArbitrationEngine(aggregation_config)
     
     def verify_summary(
         self,
@@ -147,43 +152,12 @@ class Checker:
                         score=None
                     ))
             
-            # Determine final verdict using priority: refuted > supported > insufficient_evidence
-            final_verdict = "insufficient_evidence"
-            final_validator = "unknown"
-            final_explanation = ""
-            
-            # Check for refuted (highest priority)
-            for vr in validator_results:
-                if vr.verdict == "refuted":
-                    final_verdict = "refuted"
-                    final_validator = vr.validator
-                    final_explanation = vr.explanation or ""
-                    break
-            
-            # If not refuted, check for supported
-            if final_verdict != "refuted":
-                for vr in validator_results:
-                    if vr.verdict == "supported":
-                        final_verdict = "supported"
-                        final_validator = vr.validator
-                        final_explanation = vr.explanation or ""
-                        break
-            
-            # If neither refuted nor supported, use first insufficient_evidence
-            if final_verdict == "insufficient_evidence" and validator_results:
-                vr = validator_results[0]
-                final_validator = vr.validator
-                final_explanation = vr.explanation or ""
-            
-            # Create final disposition with all validator results
+            # Use arbitration engine to resolve conflicts between validators
             if validator_results:
-                final_disposition = Disposition(
+                final_disposition = self.arbitration_engine.arbitrate(
                     claim=claim,
-                    verdict=final_verdict,
-                    evidence=evidence,
-                    validator=final_validator,
-                    explanation=final_explanation,
-                    validator_results=validator_results
+                    validator_results=validator_results,
+                    evidence=evidence
                 )
                 dispositions.append(final_disposition)
         
@@ -194,17 +168,21 @@ class Checker:
             schema=self.config.schema
         )
         
-        # Calculate overall score
+        # Calculate overall score (pass/fail)
         overall_score = self._calculate_overall_score(
             dispositions=dispositions,
             summary=summary
         )
+        
+        # Calculate quality score (validator agreement)
+        quality_score = self._calculate_quality_score(dispositions)
         
         # Build report
         report = VerificationReport(
             dispositions=dispositions,
             source_fields=summary,
             overall_score=overall_score,
+            quality_score=quality_score,
             missing_claims=missing_claims,
             issues=[],  # Will be populated by rubric/auditor
             metadata=meta
@@ -218,7 +196,7 @@ class Checker:
         summary: Dict[str, Any]
     ) -> float:
         """
-        Calculate overall verification score.
+        Calculate overall verification score (pass/fail).
         
         Args:
             dispositions: List of claim dispositions
@@ -249,6 +227,37 @@ class Checker:
         overall = (0.7 * claim_score) + (0.3 * completeness_score)
         
         return round(overall, 3)
+    
+    def _calculate_quality_score(self, dispositions: List[Disposition]) -> float:
+        """
+        Calculate overall quality score based on validator agreement.
+        
+        Quality score reflects how confident we are in the results:
+        - 1.0: All validators agreed on all claims
+        - 0.5-0.9: Some disagreement but generally consistent
+        - 0.0-0.5: Significant disagreement across validators
+        
+        Args:
+            dispositions: List of claim dispositions with quality scores
+        
+        Returns:
+            Average quality score between 0.0 and 1.0
+        """
+        if not dispositions:
+            return 1.0
+        
+        # Calculate average quality score across all dispositions
+        quality_scores = [
+            d.quality_score for d in dispositions
+            if d.quality_score is not None
+        ]
+        
+        if not quality_scores:
+            # No quality scores available (single validator per claim)
+            return 1.0
+        
+        avg_quality = sum(quality_scores) / len(quality_scores)
+        return round(avg_quality, 3)
     
     def _get_or_create_retriever(
         self,

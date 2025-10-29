@@ -83,6 +83,12 @@ class Disposition(BaseModel):
         description="Results from all validators"
     )
     confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Overall confidence")
+    quality_score: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Quality score (1.0 = all validators agree, lower = disagreement/issues)"
+    )
     
     @computed_field
     @property
@@ -131,7 +137,13 @@ class VerificationReport(BaseModel):
         default=0.0,
         ge=0.0,
         le=1.0,
-        description="Overall verification score"
+        description="Overall verification score (pass/fail)"
+    )
+    quality_score: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Overall quality score (validator agreement, completeness)"
     )
     missing_claims: List[str] = Field(
         default_factory=list,

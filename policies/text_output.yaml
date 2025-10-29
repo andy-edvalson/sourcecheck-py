@@ -1,9 +1,9 @@
-version: "1.0"
+version: "2.0"
 
-# Validation policies for free-form text output
-# Uses semantic validators for best results with unstructured text
+# Validation policies for free-form text output with arbitration
+# Uses semantic validators with conflict resolution
 
-description: "Validation policies for raw text output from LLM agents"
+description: "Advanced validation policies for raw text output from LLM agents"
 
 # Global settings
 retriever: "semantic"  # Semantic retrieval works best for free-form text
@@ -13,6 +13,15 @@ threshold: 0.3
 validators:
   content:
     - nli_validator:
-        refute_threshold: 0.96    # Require 96% confidence to refute (very strict - only obvious contradictions)
-        support_threshold: 0.50   # Require 50% confidence to support (moderate - balance precision/recall)
-    - hybrid_bm25_minilm_validator
+        refute_threshold: 0.90    # Require 96% confidence to refute (very strict)
+        support_threshold: 0.50   # Require 50% confidence to support (moderate)
+    - hybrid_bm25_minilm_validator:
+        min_score: 0.30
+
+# Aggregation strategy with weighted voting
+aggregation:
+  strategy: "weighted_voting"  # Trust hybrid validator more
+  default_weights:
+    nli_validator: 0.3           # 30% weight - good for catching contradictions
+    hybrid_bm25_minilm_validator: 0.7  # 70% weight - strong lexical+semantic matching
+  explain_conflicts: true
