@@ -1,0 +1,70 @@
+ 
+ 	
+{
+    "sections": [
+        {
+            "label": "High-Risk Dx",
+            "value": "- !! History- Mechanism of injury unclear (direct vs twisting), Anticoagulant use not fully excluded; Exam- Assess for neurovascular compromise, Evaluate for compartment syndrome; DDX- Femur/knee fracture, Compartment syndrome, Vascular injury; Consider: Emergent x-ray imaging, Serial neurovascular checks"
+        },
+        {
+            "label": "Identifiers",
+            "value": "56-year-old female"
+        },
+        {
+            "label": "Mode of Transport",
+            "value": "Ambulance"
+        },
+        {
+            "label": "Historians",
+            "value": "Patient | Daughter"
+        },
+        {
+            "label": "Chief Complaint",
+            "value": "Fall"
+        },
+        {
+            "label": "HPI",
+            "value": "- Fell at approximately 10:00 onto cement after missing two steps while searching for a physical therapy office in San Ramon; landed directly on left leg\n- Developed pain and swelling above left knee with burning sensation and large bruising (8x8 cm) and overlying laceration (5 cm); left ankle swollen but no pain\n- Able to walk after fall; pain worsened after shopping and while driving, prompting ED visit; attempted to drive but required ambulance due to severe pain\n- Denies prior surgeries, injuries, or ACL issues to affected leg; denies pain elsewhere\n- Takes blood pressure medication; occasionally takes aspirin; denies use of blood thinners\n- Last tetanus shot 6 years ago"
+        },
+        {
+            "label": "Treatments PTA",
+            "value": ""
+        },
+        {
+            "label": "Providers",
+            "value": ""
+        },
+        {
+            "label": "PMH",
+            "value": "Hypertension"
+        },
+        {
+            "label": "PSH",
+            "value": "prior colonoscopy, unknown date"
+        },
+        {
+            "label": "Medications",
+            "value": "Blood pressure medication | Occasional aspirin"
+        },
+        {
+            "label": "Social",
+            "value": ""
+        },
+        {
+            "label": "Code Status",
+            "value": ""
+        },
+        {
+            "label": "Vital Signs",
+            "value": ""
+        },
+        {
+            "label": "PE Findings",
+            "value": "Template: Normal Adult with detailed MS, Skin\n- Musculoskeletal & Peripheral Vascular: Detailed exam shows swelling and large bruising (8×8 cm) on the inside of the left knee, overlying 5 cm laceration, left ankle swollen, no pain with palpation or movement around ankle, pain above knee.\n- Skin: Detailed exam shows bruising and laceration on the inside of the left knee."
+        },
+        {
+            "label": "Other",
+            "value": ""
+        }
+    ]
+}

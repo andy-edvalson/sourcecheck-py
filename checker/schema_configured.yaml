@@ -1,0 +1,340 @@
+version: "1.0"
+
+# Enhanced schema with extraction configuration for ED fields
+# Based on real ambient transcription data analysis
+
+fields:
+  # Single-value fields
+  chief_complaint:
+    type: string
+    required: true
+    criticality: critical
+    description: "Primary reason for ED visit"
+    extraction:
+      method: single_value
+  
+  identifiers:
+    type: string
+    required: true
+    criticality: high
+    description: "Patient age, sex, identifying information"
+    extraction:
+      method: single_value
+  
+  mode_of_transport:
+    type: string
+    required: false
+    criticality: medium
+    description: "How patient arrived"
+    extraction:
+      method: single_value
+  
+  dispo:
+    type: string
+    required: true
+    criticality: critical
+    description: "Disposition (admit, discharge, transfer)"
+    extraction:
+      method: single_value
+  
+  # Pipe-delimited fields
+  historians:
+    type: string
+    required: false
+    criticality: low
+    description: "Sources of history"
+    extraction:
+      method: delimited
+      delimiter: "|"
+      trim: true
+      fallback: single_value
+  
+  medications:
+    type: string
+    required: false
+    criticality: high
+    description: "Current medications"
+    extraction:
+      method: delimited
+      delimiter: "|"
+      trim: true
+      fallback: single_value
+  
+  # Bullet list fields
+  hpi:
+    type: string
+    required: true
+    criticality: critical
+    description: "History of present illness"
+    extraction:
+      method: bullet_list
+      delimiter: "\n-"
+      trim: true
+      fallback: sentence_split
+  
+  pe_findings:
+    type: string
+    required: true
+    criticality: critical
+    description: "Physical examination findings"
+    extraction:
+      method: bullet_list
+      delimiter: "\n-"
+      trim: true
+      fallback: single_value
+  
+  # Newline-delimited fields
+  treatments:
+    type: string
+    required: false
+    criticality: high
+    description: "Treatments and medications administered"
+    extraction:
+      method: delimited
+      delimiter: "\n"
+      trim: true
+      fallback: single_value
+  
+  follow_up:
+    type: string
+    required: false
+    criticality: high
+    description: "Follow-up instructions"
+    extraction:
+      method: delimited
+      delimiter: "\n"
+      trim: true
+      fallback: single_value
+  
+  # Semicolon-delimited fields
+  procedures_by_me:
+    type: string
+    required: false
+    criticality: high
+    description: "Procedures performed by documenting provider"
+    extraction:
+      method: delimited
+      delimiter: ";"
+      trim: true
+      fallback: single_value
+  
+  # Comma-delimited fields
+  ddx:
+    type: string
+    required: false
+    criticality: high
+    description: "Differential diagnoses considered"
+    extraction:
+      method: delimited
+      delimiter: ","
+      trim: true
+      fallback: single_value
+  
+  # Structured fields
+  dx:
+    type: string
+    required: true
+    criticality: critical
+    description: "Primary diagnosis with ICD code"
+    extraction:
+      method: structured
+      pattern: "Primary:\\s*(.+?)\\s*\\(([^)]+)\\)"
+      fallback: single_value
+  
+  # Simple text fields
+  pmh:
+    type: string
+    required: false
+    criticality: high
+    description: "Past medical history"
+    extraction:
+      method: single_value
+  
+  psh:
+    type: string
+    required: false
+    criticality: medium
+    description: "Past surgical history"
+    extraction:
+      method: single_value
+  
+  imaging_interpreted:
+    type: string
+    required: false
+    criticality: critical
+    description: "Imaging studies interpreted"
+    extraction:
+      method: single_value
+  
+  pt_family_discussion:
+    type: string
+    required: false
+    criticality: medium
+    description: "Discussions with patient/family"
+    extraction:
+      method: single_value
+  
+  em_score:
+    type: string
+    required: false
+    criticality: medium
+    description: "E/M level scoring"
+    extraction:
+      method: single_value
+  
+  # Special fields (not validated)
+  high_risk_dx:
+    type: string
+    required: false
+    criticality: critical
+    description: "High-risk differential diagnoses and red flags (LLM-generated alert)"
+    extraction:
+      method: skip  # Don't extract claims from this field
+  
+  # Empty/optional fields
+  treatments_pta:
+    type: string
+    required: false
+    criticality: medium
+    extraction:
+      method: single_value
+  
+  providers:
+    type: string
+    required: false
+    criticality: low
+    extraction:
+      method: single_value
+  
+  social:
+    type: string
+    required: false
+    criticality: low
+    extraction:
+      method: single_value
+  
+  code_status:
+    type: string
+    required: false
+    criticality: critical
+    extraction:
+      method: single_value
+  
+  vital_signs:
+    type: string
+    required: false
+    criticality: high
+    extraction:
+      method: single_value
+  
+  other:
+    type: string
+    required: false
+    criticality: low
+    extraction:
+      method: single_value
+  
+  presentation:
+    type: string
+    required: false
+    criticality: medium
+    extraction:
+      method: single_value
+  
+  procedures_by_others:
+    type: string
+    required: false
+    criticality: medium
+    extraction:
+      method: single_value
+  
+  re_exam:
+    type: string
+    required: false
+    criticality: medium
+    extraction:
+      method: single_value
+  
+  abnormal_labs:
+    type: string
+    required: false
+    criticality: critical
+    extraction:
+      method: single_value
+  
+  normal_labs:
+    type: string
+    required: false
+    criticality: low
+    extraction:
+      method: single_value
+  
+  ekgs:
+    type: string
+    required: false
+    criticality: high
+    extraction:
+      method: single_value
+  
+  imaging_reviewed:
+    type: string
+    required: false
+    criticality: high
+    extraction:
+      method: single_value
+  
+  consultant_discussion:
+    type: string
+    required: false
+    criticality: high
+    extraction:
+      method: single_value
+  
+  sdoh_impact:
+    type: string
+    required: false
+    criticality: medium
+    extraction:
+      method: single_value
+  
+  studies_considered:
+    type: string
+    required: false
+    criticality: low
+    extraction:
+      method: single_value
+  
+  critical_care:
+    type: string
+    required: false
+    criticality: critical
+    extraction:
+      method: single_value
+  
+  sepsis:
+    type: string
+    required: false
+    criticality: critical
+    extraction:
+      method: single_value
+  
+  risk_scores:
+    type: string
+    required: false
+    criticality: medium
+    extraction:
+      method: single_value
+  
+  mips_measures:
+    type: string
+    required: false
+    criticality: low
+    extraction:
+      method: single_value
+
+# Criticality levels determine how failures are weighted
+criticality_weights:
+  critical: 1.0
+  high: 0.8
+  medium: 0.5
+  low: 0.2

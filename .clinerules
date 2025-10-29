@@ -1,0 +1,202 @@
+# Chart-Checker Project Rules
+
+## Project Overview
+A configurable Python library for validating clinical summaries against source transcripts using NLI and other ML models. The system extracts claims from structured summaries, retrieves evidence from transcripts, and validates using multiple configurable validators.
+
+## Architecture
+
+### Core Components
+1. **Checker** (`checker/checker.py`) - Main orchestrator
+2. **Config** (`checker/config.py`) - YAML configuration loader
+3. **Validators** (`checker/validators/`) - Pluggable validation logic
+4. **Retrievers** (`checker/retrieval/`) - Evidence retrieval strategies
+5. **Claim Extractors** (`checker/claimextractor/`) - Extract claims from summaries
+6. **Types** (`checker/types.py`) - Shared data structures
+
+### Design Patterns
+- **Registry Pattern**: Validators and retrievers use decorator-based registration
+- **Strategy Pattern**: Swappable validators and retrievers
+- **Configuration-Driven**: Behavior controlled by YAML, not code
+- **Modular**: Easy to add new validators, retrievers, or extractors
+
+## Key Configuration Files
+
+### schema.yaml / schema_configured.yaml
+Defines summary field structure:
+- Field types and requirements
+- Criticality levels (critical/high/medium/low)
+- Extraction methods (single_value, delimited, bullet_list, structured, skip)
+- Field-specific delimiters and patterns
+
+### policies.yaml
+Maps validators to fields:
+- Validator assignments per field
+- Retriever selection (bm25, semantic, hybrid)
+- Global settings (thresholds, weights)
+- Validator-specific configurations
+
+## Common Workflows
+
+### Adding a New Validator
+1. Create `checker/validators/my_validator.py`
+2. Inherit from `Validator` base class
+3. Register with `@register_validator("my_validator")`
+4. Implement `validate()` method returning `Disposition`
+5. Import in `checker/validators/__init__.py`
+6. Add to `policies.yaml` for relevant fields
+
+### Testing Validation
+```bash
+# Activate virtual environment
+source venv/bin/activate  # or chart-checker/bin/activate
+
+# Test claim extraction
+python examples/test_extraction.py
+
+# Test full validation pipeline
+python examples/run_real_example.py
+
+# Run unit tests
+pytest tests/ -v
+```
+
+### Configuring a New Field
+1. Add field definition to `schema_configured.yaml`
+2. Specify extraction method and parameters
+3. Add validator mappings in `policies.yaml`
+4. Test with real data
+
+## Available Validators
+
+- **bm25_validator** - BM25 keyword matching
+- **minilm_validator** - Semantic similarity with MiniLM embeddings
+- **clinical_nli_validator** - Clinical NLI model for entailment
+- **hybrid_bm25_minilm_validator** - Combined BM25 + semantic
+- **context_aware_bm25_validator** - BM25 with context expansion
+- **negation_refuter** - Detects negated claims
+- **regex_validator** - Pattern matching for structured fields
+- **speaker_attribution_validator** - Validates speaker/historian attribution
+- **always_true** - Placeholder (always returns "supported")
+
+## Available Retrievers
+
+- **bm25_retriever** - BM25 keyword-based retrieval
+- **semantic_retriever** - Dense retrieval with embeddings
+- **context_aware_bm25_retriever** - BM25 with context expansion
+- **keyword_retriever** - Simple keyword matching
+- **dummy_retriever** - Returns empty evidence (testing)
+
+## Important Conventions
+
+### Verdict Types
+- `"supported"` - Claim is supported by evidence
+- `"refuted"` - Claim contradicts evidence
+- `"insufficient_evidence"` - Not enough evidence to determine
+
+### Verdict Priority (when multiple validators run)
+1. `refuted` (highest priority)
+2. `supported`
+3. `insufficient_evidence` (lowest priority)
+
+### File Naming
+- Validators: `{name}_validator.py`
+- Retrievers: `{name}_retriever.py`
+- Tests: `test_{component}.py`
+
+## Development Commands
+
+```bash
+# Setup
+python3 -m venv venv
+source venv/bin/activate
+pip install -e ".[dev]"
+
+# Testing
+pytest tests/ -v
+python examples/test_extraction.py
+python examples/run_real_example.py
+
+# CLI Usage
+chart-checker --transcript examples/real_transcript.txt \
+              --summary examples/real_summary.json \
+              --schema checker/schema_configured.yaml \
+              --policies checker/policies.yaml \
+              --output report.json
+```
+
+## Real Data Notes
+
+The project includes real deidentified ED ambient transcription data:
+- **Transcript**: `examples/real_transcript.txt` (2,500+ words)
+- **Summary**: `examples/real_summary.json` (40 fields, nested structure)
+- **Extraction**: Successfully extracts 41 claims from 19 fields
+- **Delimiters**: Pipes, bullets, semicolons, newlines, commas
+
+## Configuration Philosophy
+
+**"Configuration over Code"**
+- Extraction logic driven by YAML schema
+- Validator selection via policies
+- No code changes needed for new fields
+- Easy to tune and iterate
+- Clear separation of concerns
+
+## When to Use Which Validator
+
+- **Simple keyword matching**: `bm25_validator`
+- **Semantic understanding**: `minilm_validator` or `clinical_nli_validator`
+- **Best of both**: `hybrid_bm25_minilm_validator`
+- **Terse claims needing context**: `context_aware_bm25_validator`
+- **Negation detection**: `negation_refuter`
+- **Structured data**: `regex_validator`
+- **Speaker validation**: `speaker_attribution_validator`
+
+## Performance Considerations
+
+- **Retriever caching implemented**: Retrievers are cached by default to avoid rebuilding indexes
+- Current implementation is synchronous
+- Evidence retrieval is O(n) for keyword search
+- Semantic models load on first use (lazy loading)
+- Consider async/await for future API integrations
+- See `PERFORMANCE_OPTIMIZATION.md` for caching details
+
+## Security Notes
+
+- Input validation needed for production
+- Sanitize transcript and summary inputs
+- Validate YAML configuration files
+- Consider rate limiting for API-based validators
+
+## Cline AI Assistant Rules
+
+### Command Execution
+**CRITICAL**: Do NOT use `execute_command` to run Python scripts or long-running commands in this project. These commands hang the terminal pipe and can crash the PTY host, requiring a system reboot.
+
+Instead:
+1. **Ask the user to run commands** and paste the output back
+2. Provide clear command instructions for the user to execute
+3. Only use `execute_command` for quick, non-blocking operations like `ls`, `cat`, etc.
+
+Examples of commands to AVOID running:
+- `python examples/test_caching.py`
+- `python examples/run_real_example.py`
+- `pytest tests/`
+- Any command that loads ML models or processes large data
+
+### Testing Workflow
+When testing is needed:
+1. Create or modify test scripts as needed
+2. Tell the user: "Please run this command and paste the output: `<command>`"
+3. Wait for user to provide results
+4. Analyze results and proceed
+
+## Next Steps for Production
+
+1. Replace placeholder validators with production logic
+2. Add comprehensive error handling
+3. ✅ Implement caching for retrieval results (COMPLETED - see PERFORMANCE_OPTIMIZATION.md)
+4. Add async support for external API calls
+5. Implement batch processing
+6. Add monitoring and logging
+7. Performance optimization
+8. Security hardening

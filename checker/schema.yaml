@@ -1,0 +1,57 @@
+version: "1.0"
+
+# Define expected summary fields, their types, and criticality levels
+fields:
+  chief_complaint:
+    type: string
+    required: true
+    criticality: high
+    description: "Primary reason for the patient visit"
+  
+  history_of_present_illness:
+    type: string
+    required: true
+    criticality: high
+    description: "Detailed narrative of the current condition"
+  
+  past_medical_history:
+    type: string
+    required: false
+    criticality: medium
+    description: "Previous medical conditions and diagnoses"
+  
+  medications:
+    type: string
+    required: false
+    criticality: medium
+    description: "Current and past medications"
+  
+  allergies:
+    type: string
+    required: false
+    criticality: high
+    description: "Known allergies and adverse reactions"
+  
+  physical_exam:
+    type: string
+    required: false
+    criticality: medium
+    description: "Physical examination findings"
+  
+  assessment:
+    type: string
+    required: true
+    criticality: high
+    description: "Clinical assessment and diagnosis"
+  
+  plan:
+    type: string
+    required: true
+    criticality: high
+    description: "Treatment plan and follow-up"
+
+# Criticality levels determine how failures are weighted
+criticality_weights:
+  high: 1.0
+  medium: 0.6
+  low: 0.3

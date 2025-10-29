@@ -1,0 +1,28 @@
+project_name: Chart Checker
+description: >
+  Verification framework ensuring LLM-generated clinical summaries
+  are evidence-based and hallucination-free. This context maps to the
+  `checker/` package in this repository.
+include:
+  - checker/checker.py
+  - checker/cli.py
+  - checker/config.py
+  - checker/types.py
+  - checker/validators/
+  - checker/retrieval/
+  - checker/policies.yaml
+  - checker/schema.yaml
+  - checker/schema_configured.yaml
+  - README.md
+  - CLI_USAGE.md
+  - CONFIGURATION_GUIDE.md
+  - .codex/validator_registry.md
+  - .codex/schema_overview.md
+hints:
+  - "Schema YAML must include 'version' and 'fields'; policies.yaml must include 'version', 'validators', and typically 'settings', 'retriever', 'retriever_config'."
+  - "Validators must subclass checker.validators.base.Validator and implement validate(claim, evidence, transcript) returning a checker.types.Disposition."
+  - "Use checker.retrieval.registry to register/create retrievers; Checker caches retrievers per transcript/config."
+  - "CLI supports single and multi-JSON summaries; see checker/cli.py load_multi_json()."
+  - "CLI example: chart-checker -t transcript.txt -s summary.json -p checker/policies.yaml --schema checker/schema_configured.yaml --format text --detailed"
+  - "Programmatic example: from checker import Checker; Checker(schema_path='checker/schema_configured.yaml', policies_path='checker/policies.yaml').verify_summary(transcript, summary)."
+  - "Do not generate code that accesses PHI or external services."

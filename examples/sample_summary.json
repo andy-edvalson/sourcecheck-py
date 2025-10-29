@@ -1,0 +1,10 @@
+{
+  "chief_complaint": "Chest pain for 2 days",
+  "history_of_present_illness": "45-year-old male with sharp chest pain for 2 days, rated 7/10, worsens with breathing and movement. Pain is positional, worse when lying flat.",
+  "past_medical_history": "Hypertension for 5 years, high cholesterol, diabetes mellitus type 2",
+  "medications": "Lisinopril 10mg daily, atorvastatin 20mg daily, metformin 500mg twice daily",
+  "allergies": "Penicillin (rash)",
+  "physical_exam": "BP 138/85, HR 78. Point tenderness over left sternal border. Heart sounds normal. Lungs clear bilaterally.",
+  "assessment": "Costochondritis. Patient also has underlying coronary artery disease.",
+  "plan": "Ibuprofen 400mg TID for pain. Rest and avoid aggravating activities. Follow up in 1 week. Return if symptoms worsen."
+}

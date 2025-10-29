@@ -1,0 +1,48 @@
+CLINICAL ENCOUNTER TRANSCRIPT
+Date: October 28, 2025
+Patient: John Doe (MRN: 12345)
+
+CHIEF COMPLAINT:
+Patient presents with chest pain for the past 2 days.
+
+HISTORY OF PRESENT ILLNESS:
+The patient is a 45-year-old male who reports experiencing chest pain that started 2 days ago. He describes the pain as a sharp, stabbing sensation in the center of his chest that worsens with deep breathing and movement. The pain is rated 7 out of 10 in severity. He denies any radiation of pain to the arms or jaw. The patient reports no associated shortness of breath, nausea, or diaphoresis. He states the pain is worse when lying flat and improves when sitting upright.
+
+The patient denies any recent trauma or injury. He has not taken any medications for the pain. He reports no fever or chills. No cough or sputum production noted.
+
+PAST MEDICAL HISTORY:
+The patient has a history of hypertension, diagnosed 5 years ago. He also reports having high cholesterol. No history of diabetes, heart disease, or stroke. No previous surgeries.
+
+MEDICATIONS:
+The patient reports taking lisinopril 10mg daily for blood pressure. He also takes atorvastatin 20mg daily for cholesterol. He denies taking any over-the-counter medications or supplements.
+
+ALLERGIES:
+Patient reports an allergy to penicillin, which causes a rash. No other known drug allergies.
+
+SOCIAL HISTORY:
+The patient is a non-smoker and denies any alcohol or recreational drug use. He works as an accountant and reports moderate stress levels at work.
+
+FAMILY HISTORY:
+Father had a heart attack at age 60. Mother is alive with hypertension. No family history of cancer or autoimmune diseases.
+
+PHYSICAL EXAMINATION:
+Vital Signs: BP 138/85, HR 78, RR 16, Temp 98.6°F, O2 Sat 98% on room air
+General: Alert and oriented, in no acute distress
+HEENT: Normocephalic, atraumatic. Pupils equal, round, reactive to light.
+Cardiovascular: Regular rate and rhythm, no murmurs, rubs, or gallops. Point tenderness noted over the left sternal border.
+Respiratory: Clear to auscultation bilaterally, no wheezes or crackles
+Abdomen: Soft, non-tender, non-distended, normal bowel sounds
+Extremities: No edema, pulses intact bilaterally
+
+ASSESSMENT:
+Based on the history and physical examination, the patient's presentation is most consistent with costochondritis. The sharp, positional chest pain with point tenderness over the sternal border is characteristic. Cardiac causes are less likely given the nature of the pain and lack of associated symptoms, though we cannot completely rule out cardiac etiology without further testing.
+
+PLAN:
+1. Recommend ibuprofen 400mg three times daily for pain and inflammation
+2. Advise rest and avoid activities that worsen the pain
+3. Apply heat or ice to the affected area as needed
+4. Follow up in 1 week if symptoms persist or worsen
+5. Return immediately if develops shortness of breath, severe pain, or other concerning symptoms
+6. Consider EKG and cardiac enzymes if symptoms do not improve
+
+Patient verbalized understanding of the plan and agreed to follow up as scheduled.

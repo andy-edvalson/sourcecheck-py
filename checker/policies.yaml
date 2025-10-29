@@ -1,0 +1,114 @@
+version: "1.0"
+
+retriever: semantic
+
+retriever_config:
+  contextualize_claims: true
+  claim_prefixes:
+    chief_complaint: "The patient's chief complaint is: "
+    mode_of_transport: "The patient arrived via: "
+    dx: "The diagnosis is: "
+    medications: "The patient takes: "
+    hpi: "The patient's history: "
+  chunk_size: 200
+  overlap: 50
+  context_window: 150
+  context_expansion:
+    enabled: true
+    max_context_length: 200
+    terse_threshold: 3
+    field_relationships:
+      chief_complaint:
+        context_fields: ['hpi']
+      dx:
+        context_fields: ['hpi', 'ddx']
+
+validators:
+  hpi:
+    - bm25_validator
+
+  medications:
+    - bm25_validator
+
+  dx:
+    - bm25_validator
+
+  treatments:
+    - bm25_validator
+
+  procedures_by_me:
+    - bm25_validator
+
+  procedures_by_others:
+    - bm25_validator
+
+  ddx:
+    - bm25_validator
+
+  pe_findings:
+    - bm25_validator
+
+  chief_complaint:
+    - hybrid_bm25_minilm_validator
+
+  identifiers:
+    - regex_validator
+
+  pmh:
+    - hybrid_bm25_minilm_validator
+
+  psh:
+    - negation_refuter:
+        match_threshold: 0.6
+        semantic_threshold: 0.6
+        boost_words:
+          - surgery
+          - surgical
+          - procedure
+          - operation
+          - surgical history
+    - clinical_nli_validator
+
+  mode_of_transport:
+    - hybrid_bm25_minilm_validator:
+        min_evidence_score: 0.5
+        boost_terms:
+              - ambulance
+              # - walked
+              # - on foot
+              - private vehicle
+              - police
+              - wheelchair
+        literal_boost: 0.2
+
+  historians:
+    - speaker_attribution_validator
+
+  dispo:
+    - regex_validator
+
+  follow_up:
+    - bm25_validator
+
+  imaging_interpreted:
+    - bm25_validator
+
+  pt_family_discussion:
+    - regex_validator
+
+  code_status:
+    - minilm_validator
+
+  social:
+    - minilm_validator
+
+  treatments_pta:
+    - bm25_validator
+
+settings:
+  fail_fast: false
+  min_evidence_score: 0.3
+  max_evidence_spans: 5
+  context_boost: 0.3
+  embedding_threshold: 0.65
+  bm25_weight: 0.5
