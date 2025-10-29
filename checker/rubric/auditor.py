@@ -38,7 +38,11 @@ def detect_missing_claims(
     ]
     
     transcript_lower = transcript.lower()
-    summary_text = ' '.join(str(v) for v in summary.values()).lower()
+    # Handle both dict and string summary
+    if isinstance(summary, dict):
+        summary_text = ' '.join(str(v) for v in summary.values()).lower()
+    else:
+        summary_text = str(summary).lower()
     
     for keyword in medical_keywords:
         if keyword in transcript_lower and keyword not in summary_text:

@@ -17,7 +17,7 @@ from . import minilm_validator
 from . import hybrid_bm25_minilm_validator
 from . import regex_validator
 from . import speaker_attribution_validator
-from . import clinical_nli_validator
+from . import nli_validator
 from . import negation_refuter
 
 __all__ = [

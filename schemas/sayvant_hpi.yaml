@@ -1,0 +1,123 @@
+version: "2.0"
+
+# Schema for Sayvant HPI format with sections array
+# Input structure: { "sections": [{"label": "...", "value": "..."}, ...] }
+
+description: "Schema for Sayvant HPI clinical summaries with sections array structure"
+
+fields:
+  high_risk_dx:
+    path: "sections[?label='High-Risk Dx'].value"
+    type: string
+    extraction_method: skip
+    criticality: critical
+    description: "High-risk diagnoses and considerations"
+  
+  identifiers:
+    path: "sections[?label='Identifiers'].value"
+    type: string
+    extraction_method: single_value
+    criticality: high
+    description: "Patient age, gender, and identifying information"
+  
+  mode_of_transport:
+    path: "sections[?label='Mode of Transport'].value"
+    type: string
+    extraction_method: single_value
+    criticality: medium
+    description: "How patient arrived"
+  
+  historians:
+    path: "sections[?label='Historians'].value"
+    type: string
+    extraction_method: delimited
+    delimiter: "|"
+    criticality: medium
+    description: "Who provided the history"
+  
+  chief_complaint:
+    path: "sections[?label='Chief Complaint'].value"
+    type: string
+    extraction_method: single_value
+    criticality: critical
+    description: "Primary reason for visit"
+  
+  hpi:
+    path: "sections[?label='HPI'].value"
+    type: string
+    extraction_method: bullet_list
+    delimiter: "\n-"
+    criticality: critical
+    description: "History of present illness"
+  
+  treatments_pta:
+    path: "sections[?label='Treatments PTA'].value"
+    type: string
+    extraction_method: single_value
+    criticality: low
+    description: "Treatments prior to arrival"
+  
+  providers:
+    path: "sections[?label='Providers'].value"
+    type: string
+    extraction_method: single_value
+    criticality: low
+    description: "Referring or prior providers"
+  
+  pmh:
+    path: "sections[?label='PMH'].value"
+    type: string
+    extraction_method: single_value
+    criticality: high
+    description: "Past medical history"
+  
+  psh:
+    path: "sections[?label='PSH'].value"
+    type: string
+    extraction_method: single_value
+    criticality: high
+    description: "Past surgical history"
+  
+  medications:
+    path: "sections[?label='Medications'].value"
+    type: string
+    extraction_method: delimited
+    delimiter: "|"
+    criticality: high
+    description: "Current medications"
+  
+  social:
+    path: "sections[?label='Social'].value"
+    type: string
+    extraction_method: single_value
+    criticality: medium
+    description: "Social history"
+  
+  code_status:
+    path: "sections[?label='Code Status'].value"
+    type: string
+    extraction_method: single_value
+    criticality: high
+    description: "Code status and advance directives"
+  
+  vital_signs:
+    path: "sections[?label='Vital Signs'].value"
+    type: string
+    extraction_method: single_value
+    criticality: medium
+    description: "Vital signs"
+  
+  pe_findings:
+    path: "sections[?label='PE Findings'].value"
+    type: string
+    extraction_method: bullet_list
+    delimiter: "\n-"
+    criticality: high
+    description: "Physical examination findings"
+  
+  other:
+    path: "sections[?label='Other'].value"
+    type: string
+    extraction_method: single_value
+    criticality: low
+    description: "Other notes"

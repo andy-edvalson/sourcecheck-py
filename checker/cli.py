@@ -11,104 +11,28 @@ from typing import Dict, Any
 from .checker import Checker
 
 
-def load_multi_json(file_path: Path) -> Dict[str, Any]:
+def load_document(file_path: Path):
     """
-    Load JSON file, handling both single and multi-JSON formats.
+    Load document (JSON or text).
+    
+    - JSON files: Loaded as-is (preserves nested structure)
+    - Text files: Returned as raw string
     
     Args:
-        file_path: Path to JSON file
+        file_path: Path to JSON or text file
     
     Returns:
-        Merged dictionary
+        Dictionary for JSON, string for text files
     """
-    with open(file_path) as f:
-        content = f.read()
-    
-    # Try parsing as single JSON first
-    try:
-        obj = json.loads(content)
-        # Convert sections array format if present
-        if 'sections' in obj and isinstance(obj['sections'], list):
-            flat = {}
-            for section in obj['sections']:
-                label = section.get('label', '')
-                value = section.get('value', '')
-                field_name = label.lower().replace('/', '_').replace(' ', '_').replace('-', '_')
-                flat[field_name] = value
-            return flat
-        # Auto-flatten nested section dicts (e.g., history_section, course_section)
-        if isinstance(obj, dict):
-            # Detect if any values are dicts and flatten them
-            has_nested = any(isinstance(v, dict) for v in obj.values())
-            if has_nested:
-                flat = {}
-                for k, v in obj.items():
-                    if isinstance(v, dict):
-                        flat.update(v)
-                    else:
-                        flat[k] = v
-                return flat
-        return obj
-    except json.JSONDecodeError:
-        pass
-    
-    # Try parsing as multiple JSON objects
-    objects = []
-    decoder = json.JSONDecoder()
-    idx = 0
-    
-    while idx < len(content):
-        content_slice = content[idx:].lstrip()
-        if not content_slice:
-            break
-        try:
-            obj, end_idx = decoder.raw_decode(content_slice)
-            objects.append(obj)
-            idx += len(content[:idx]) + len(content[idx:]) - len(content_slice) + end_idx
-        except json.JSONDecodeError as e:
-            print(f"Error: Could not parse JSON at position {idx}: {e}", file=sys.stderr)
-            sys.exit(1)
-    
-    if not objects:
-        print(f"Error: No valid JSON found in {file_path}", file=sys.stderr)
-        sys.exit(1)
-    
-    # Convert sections format to flat format
-    def convert_sections(obj):
-        """Convert sections array to flat field dict."""
-        if 'sections' in obj and isinstance(obj['sections'], list):
-            flat = {}
-            for section in obj['sections']:
-                label = section.get('label', '')
-                value = section.get('value', '')
-                # Convert to snake_case
-                field_name = label.lower().replace('/', '_').replace(' ', '_').replace('-', '_')
-                flat[field_name] = value
-            return flat
-        # Auto-flatten nested section dicts
-        if isinstance(obj, dict):
-            has_nested = any(isinstance(v, dict) for v in obj.values())
-            if has_nested:
-                flat = {}
-                for k, v in obj.items():
-                    if isinstance(v, dict):
-                        flat.update(v)
-                    else:
-                        flat[k] = v
-                return flat
-        return obj
-    
-    # Handle single object
-    if len(objects) == 1:
-        return convert_sections(objects[0])
-    
-    # Merge multiple objects
-    merged = {}
-    for obj in objects:
-        converted = convert_sections(obj)
-        merged.update(converted)
-    
-    return merged
+    # Check file extension
+    if file_path.suffix.lower() in ['.txt', '.text', '.md']:
+        # Load as raw text
+        with open(file_path) as f:
+            return f.read()
+    else:
+        # Load as JSON
+        with open(file_path) as f:
+            return json.load(f)
 
 
 def format_text_report(report: Dict[str, Any], detailed: bool = False) -> str:
@@ -276,13 +200,13 @@ Examples:
     )
     parser.add_argument(
         '-p', '--policies',
-        required=True,
-        help='Path to policies.yaml file'
+        default='policies/sayvant_hpi.yaml',
+        help='Path to policies.yaml file (default: policies/sayvant_hpi.yaml)'
     )
     parser.add_argument(
-        '--schema',
-        default='checker/schema_configured.yaml',
-        help='Path to schema.yaml file (default: checker/schema_configured.yaml)'
+        '-i', '--schema',
+        default='schemas/sayvant_hpi.yaml',
+        help='Path to input schema.yaml file (default: schemas/sayvant_hpi.yaml)'
     )
     parser.add_argument(
         '-o', '--output',
@@ -350,7 +274,7 @@ Examples:
     if args.verbose:
         print(f"Loading summary from: {summary_path}")
     
-    summary = load_multi_json(summary_path)
+    summary = load_document(summary_path)
     
     if args.verbose:
         print(f"Loaded {len(summary)} fields from summary")
@@ -398,7 +322,7 @@ Examples:
         sys.exit(1)
     
     # Save report
-    report_dict = report.to_dict()
+    report_dict = report.model_dump()
     
     if args.format == 'json':
         with open(args.output, 'w') as f:
@@ -442,10 +366,13 @@ Examples:
             # Print summary
             print("SUMMARY:")
             print(f"  Total Claims: {total}")
-            print(f"  Supported: {supported} ({supported/total*100:.1f}%)")
-            print(f"  Insufficient Evidence: {len(insufficient)} ({len(insufficient)/total*100:.1f}%)")
-            print(f"  Refuted: {len(refuted)} ({len(refuted)/total*100:.1f}%)")
-            print(f"  Overall Score: {report.overall_score:.3f}")
+            if total > 0:
+                print(f"  Supported: {supported} ({supported/total*100:.1f}%)")
+                print(f"  Insufficient Evidence: {len(insufficient)} ({len(insufficient)/total*100:.1f}%)")
+                print(f"  Refuted: {len(refuted)} ({len(refuted)/total*100:.1f}%)")
+                print(f"  Overall Score: {report.overall_score:.3f}")
+            else:
+                print("  No claims found to validate")
     
     elif args.format == 'text':
         text_report = format_text_report(report_dict, detailed=args.detailed)

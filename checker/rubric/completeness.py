@@ -5,19 +5,23 @@ from typing import List, Dict, Any
 
 
 def check_completeness(
-    summary: Dict[str, Any],
+    summary,  # Can be Dict[str, Any] or str
     schema: Dict[str, Any]
 ) -> List[str]:
     """
     Check if all required fields are present and non-empty in the summary.
     
     Args:
-        summary: Summary dictionary with field values
+        summary: Summary dictionary with field values or raw string
         schema: Schema configuration defining required fields
     
     Returns:
         List of missing or empty required field names
     """
+    # For string summaries, completeness doesn't apply
+    if not isinstance(summary, dict):
+        return []
+    
     missing_fields = []
     
     fields = schema.get('fields', {})
@@ -40,19 +44,23 @@ def check_completeness(
 
 
 def calculate_completeness_score(
-    summary: Dict[str, Any],
+    summary,  # Can be Dict[str, Any] or str
     schema: Dict[str, Any]
 ) -> float:
     """
     Calculate a completeness score based on required fields.
     
     Args:
-        summary: Summary dictionary with field values
+        summary: Summary dictionary with field values or raw string
         schema: Schema configuration
     
     Returns:
         Score between 0.0 and 1.0, where 1.0 is fully complete
     """
+    # For string summaries, completeness is always 1.0 (not applicable)
+    if not isinstance(summary, dict):
+        return 1.0
+    
     fields = schema.get('fields', {})
     required_fields = [
         name for name, config in fields.items()

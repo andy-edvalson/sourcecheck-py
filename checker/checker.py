@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from .config import Config
-from .types import Report, Disposition, Claim, ValidatorResult
+from .types import VerificationReport, Disposition, Claim, ValidatorResult
 from .claimextractor import extract_claims_configurable
 from .retrieval import create_retriever
 from .validators import create_validator
@@ -55,17 +55,17 @@ class Checker:
         transcript: str,
         summary: Dict[str, Any],
         meta: Optional[Dict[str, Any]] = None
-    ) -> Report:
+    ) -> VerificationReport:
         """
-        Verify a summary against a transcript.
+        Verify a structured document against source material.
         
         Args:
-            transcript: Full transcript text
-            summary: Summary dictionary with field values
+            transcript: Full source material text
+            summary: Structured document dictionary with field values
             meta: Optional metadata
         
         Returns:
-            Report with verification results
+            VerificationReport with verification results
         """
         # Extract claims from summary
         claims = extract_claims_configurable(
@@ -142,8 +142,8 @@ class Checker:
                         print(f"DEBUG: Error running validator {validator_name}: {e}")
                     validator_results.append(ValidatorResult(
                         validator=validator_name,
-                        verdict="error",
-                        explanation=str(e),
+                        verdict="insufficient_evidence",
+                        explanation=f"Validator error: {str(e)}",
                         score=None
                     ))
             
@@ -201,11 +201,12 @@ class Checker:
         )
         
         # Build report
-        report = Report(
+        report = VerificationReport(
             dispositions=dispositions,
-            summary_fields=summary,
+            source_fields=summary,
             overall_score=overall_score,
             missing_claims=missing_claims,
+            issues=[],  # Will be populated by rubric/auditor
             metadata=meta
         )
         

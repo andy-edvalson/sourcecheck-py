@@ -4,10 +4,11 @@ Configurable claim extractor that uses schema to determine extraction method.
 import re
 from typing import List, Dict, Any, Optional
 from ..types import Claim
+from ..utils.path_resolver import PathResolver
 
 
 def extract_claims_configurable(
-    summary: Dict[str, Any],
+    summary,  # Can be Dict[str, Any] or str
     schema: Dict[str, Any],
     meta: Optional[Dict[str, Any]] = None,
     debug: bool = False
@@ -15,8 +16,10 @@ def extract_claims_configurable(
     """
     Extract claims from summary using schema-defined extraction methods.
     
+    Supports path-based field resolution for nested structures and raw text.
+    
     Args:
-        summary: Summary dictionary with field values
+        summary: Summary dictionary with field values (may be nested) or raw string
         schema: Schema dict with extraction configuration per field
         meta: Optional metadata
         debug: Enable debug output (default: False)
@@ -25,13 +28,32 @@ def extract_claims_configurable(
         List of Claim objects
     """
     claims = []
+    fields_config = schema.get('fields', {})
     
     if debug:
-        print(f"DEBUG extract_claims_configurable: Processing {len(summary)} fields")
+        print(f"DEBUG extract_claims_configurable: Processing {len(fields_config)} configured fields")
+        print(f"DEBUG: Summary type: {type(summary).__name__}")
     
-    for field_name, field_value in summary.items():
-        if debug:
-            print(f"DEBUG extract_claims_configurable: Field '{field_name}' = '{field_value[:50] if isinstance(field_value, str) else field_value}...'")
+    for field_name, field_config in fields_config.items():
+        # Use path resolution or direct access
+        path = field_config.get('path')
+        fallback_paths = field_config.get('fallback_paths', [])
+        
+        if path:
+            # Use path resolution (handles all formats via path syntax)
+            all_paths = [path] + fallback_paths
+            field_value = PathResolver.resolve_with_fallbacks(summary, all_paths)
+            if debug and field_value:
+                print(f"DEBUG: Resolved '{field_name}' from path '{path}'")
+        else:
+            # Backward compatibility: direct field access
+            if isinstance(summary, dict):
+                field_value = summary.get(field_name)
+            else:
+                field_value = None
+            if debug and field_value:
+                print(f"DEBUG: Got '{field_name}' via direct access")
+        
         if not field_value or not isinstance(field_value, str):
             continue
         
@@ -39,27 +61,25 @@ def extract_claims_configurable(
         if not field_value.strip():
             continue
         
-        # Get field configuration from schema
-        field_config = get_field_config(schema, field_name)
-        if not field_config:
-            # No config, treat as single value
-            claims.append(Claim(
-                text=field_value.strip(),
-                field=field_name,
-                metadata={"extraction_method": "default"}
-            ))
+        # Get extraction method
+        method = field_config.get('extraction_method', 'single_value')
+        
+        # Skip fields marked as 'skip'
+        if method == 'skip':
+            if debug:
+                print(f"DEBUG: Skipping field '{field_name}' (extraction_method=skip)")
             continue
         
-        # Get extraction configuration
-        extraction_config = field_config.get('extraction', {})
-        method = extraction_config.get('method', 'single_value')
+        if debug:
+            value_preview = field_value[:50] if len(field_value) > 50 else field_value
+            print(f"DEBUG: Extracting from '{field_name}' using method '{method}': '{value_preview}...'")
         
         # Extract claims based on method
         field_claims = extract_by_method(
             field_value=field_value,
             field_name=field_name,
             method=method,
-            config=extraction_config
+            config=field_config
         )
         
         claims.extend(field_claims)
@@ -96,7 +116,7 @@ def extract_by_method(
         field_value: The field's text value
         field_name: Name of the field
         method: Extraction method (single_value, delimited, bullet_list, etc.)
-        config: Extraction configuration
+        config: Field configuration dict (contains delimiter, pattern, etc.)
     
     Returns:
         List of extracted claims
@@ -114,8 +134,8 @@ def extract_by_method(
     elif method == 'delimited':
         # Split on delimiter
         delimiter = config.get('delimiter', ',')
-        trim = config.get('trim', True)
-        fallback = config.get('fallback', 'single_value')
+        trim = True
+        fallback = 'single_value'
         
         parts = field_value.split(delimiter)
         
@@ -148,8 +168,8 @@ def extract_by_method(
     elif method == 'bullet_list':
         # Extract bullet points
         delimiter = config.get('delimiter', '\n-')
-        trim = config.get('trim', True)
-        fallback = config.get('fallback', 'single_value')
+        trim = True
+        fallback = 'single_value'
         
         # Check if field has bullet format
         if has_bullet_format(field_value, delimiter):
@@ -229,6 +249,17 @@ def extract_by_method(
                 field=field_name,
                 metadata={"extraction_method": "structured_no_pattern"}
             ))
+    
+    elif method == 'sentence_split':
+        # Split text into sentences
+        sentences = split_into_sentences(field_value)
+        for sentence in sentences:
+            if sentence.strip():
+                claims.append(Claim(
+                    text=sentence.strip(),
+                    field=field_name,
+                    metadata={"extraction_method": "sentence_split"}
+                ))
     
     else:
         # Unknown method, treat as single value

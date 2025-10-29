@@ -1,6 +1,8 @@
 """
-Clinical NLI Validator using DeBERTa-base MNLI.
+NLI (Natural Language Inference) Validator using DeBERTa-base MNLI.
 Detects entailment, neutral, or contradiction between claim and evidence.
+
+Domain-agnostic validator that can be used for any text verification task.
 """
 
 from typing import List, Tuple
@@ -14,8 +16,8 @@ import spacy
 from negspacy.negation import Negex
 
 
-@register_validator("clinical_nli_validator")
-class ClinicalNLIValidator(Validator):
+@register_validator("nli_validator")
+class NLIValidator(Validator):
     """
     Lightweight entailment-based validator using DeBERTa-v3 MNLI.
     Determines if evidence contradicts or supports the claim.
@@ -25,6 +27,7 @@ class ClinicalNLIValidator(Validator):
     - Detects entailment to support true claims
     - Uses confidence thresholds to avoid false refutations
     - Singleton model loading for performance
+    - Domain-agnostic (works for any text verification)
     """
     
     # Class-level model cache (singleton pattern)
@@ -39,7 +42,11 @@ class ClinicalNLIValidator(Validator):
         # Configuration
         cfg = self.config or {}
         self.model_name = cfg.get("model_name", "microsoft/deberta-v3-base")
-        self.confidence_threshold = cfg.get("confidence_threshold", 0.3)
+        
+        # Separate thresholds for refutation vs support
+        self.refute_threshold = cfg.get("refute_threshold", cfg.get("confidence_threshold", 0.9))
+        self.support_threshold = cfg.get("support_threshold", cfg.get("confidence_threshold", 0.3))
+        
         self.use_gpu = cfg.get("use_gpu", torch.cuda.is_available())
         self.max_evidence_spans = cfg.get("max_evidence_spans", 5)
         
@@ -63,13 +70,13 @@ class ClinicalNLIValidator(Validator):
     def _ensure_negation_model_loaded(cls):
         """Load negation detection model once and cache at class level."""
         if cls._nlp is None:
-            print(f"Loading negation detection model for clinical_nli_validator")
+            print(f"Loading negation detection model for nli_validator")
             cls._nlp = spacy.load("en_core_sci_md")
             cls._nlp.add_pipe("negex", config={"chunk_prefix": ["no", "denies", "without", "never", "negative"]})
 
     @property
     def name(self) -> str:
-        return "clinical_nli_validator"
+        return "nli_validator"
 
     def _is_negated(self, text: str) -> bool:
         """Check if text contains negation"""
@@ -161,19 +168,19 @@ class ClinicalNLIValidator(Validator):
             
             relation, confidence = self._classify_pair(ev.text, claim.text)
             
-            # High-confidence contradiction = refute claim
-            if relation == "contradiction" and confidence >= self.confidence_threshold:
+            # High-confidence contradiction = refute claim (stricter threshold)
+            if relation == "contradiction" and confidence >= self.refute_threshold:
                 verdict = "refuted"
-                explanation = f"Claim contradicts evidence (confidence={confidence:.2f}): \"{ev.text[:100]}...\""
+                explanation = f"Claim contradicts evidence (confidence={confidence:.2f}, threshold={self.refute_threshold}): \"{ev.text[:100]}...\""
                 best_evidence = ev
                 best_confidence = confidence
                 break  # Stop at first high-confidence contradiction
             
-            # High-confidence entailment = support claim
-            elif relation == "entailment" and confidence >= self.confidence_threshold:
+            # High-confidence entailment = support claim (more lenient threshold)
+            elif relation == "entailment" and confidence >= self.support_threshold:
                 if confidence > best_confidence:
                     verdict = "supported"
-                    explanation = f"Claim supported by evidence (confidence={confidence:.2f}): \"{ev.text[:100]}...\""
+                    explanation = f"Claim supported by evidence (confidence={confidence:.2f}, threshold={self.support_threshold}): \"{ev.text[:100]}...\""
                     best_evidence = ev
                     best_confidence = confidence
                 # Continue checking for contradictions
@@ -183,7 +190,7 @@ class ClinicalNLIValidator(Validator):
                 continue
 
         if not explanation:
-            explanation = f"No strong entailment or contradiction found (threshold={self.confidence_threshold})"
+            explanation = f"No strong entailment or contradiction found (support_threshold={self.support_threshold}, refute_threshold={self.refute_threshold})"
 
         return Disposition(
             claim=claim,
