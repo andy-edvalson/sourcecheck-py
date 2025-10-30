@@ -29,6 +29,7 @@ ENV/
 chart-checker/
 
 # IDE
+.codex
 .vscode/
 .idea/
 *.swp
