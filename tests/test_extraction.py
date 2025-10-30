@@ -2,8 +2,8 @@
 Tests for claim extraction functionality.
 """
 import pytest
-from checker.claimextractor.configurable import extract_claims_configurable
-from checker.config import Config
+from sourcecheck.claimextractor.configurable import extract_claims_configurable
+from sourcecheck.config import Config
 
 
 @pytest.fixture

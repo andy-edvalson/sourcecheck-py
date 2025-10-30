@@ -89,6 +89,10 @@ class Disposition(BaseModel):
         le=1.0,
         description="Quality score (1.0 = all validators agree, lower = disagreement/issues)"
     )
+    quality_issues: List["QualityIssue"] = Field(
+        default_factory=list,
+        description="Detected quality issues (omissions, vagueness, etc.)"
+    )
     
     @computed_field
     @property
@@ -101,6 +105,36 @@ class Disposition(BaseModel):
     def evidence_count(self) -> int:
         """Count of evidence spans."""
         return len(self.evidence)
+
+
+class QualityIssue(BaseModel):
+    """
+    Represents a quality issue detected in a claim.
+    
+    Quality issues highlight problems like omissions, vagueness, or contradictions
+    between claims and evidence, even when the claim is ultimately accepted.
+    
+    Recommended types: "omission", "vagueness", "contradiction", "incomplete"
+    Recommended severities: "critical", "high", "medium", "low"
+    
+    Custom quality modules may use other values as needed.
+    """
+    type: str = Field(
+        ...,
+        description="Issue type (recommended: omission, vagueness, contradiction, incomplete)"
+    )
+    severity: str = Field(
+        ...,
+        description="Issue severity (recommended: critical, high, medium, low)"
+    )
+    detail: str = Field(..., description="Detailed description of the issue")
+    evidence_snippet: Optional[str] = Field(None, description="Relevant evidence text")
+    claim_snippet: Optional[str] = Field(None, description="Relevant claim text")
+    suggestion: Optional[str] = Field(None, description="How to improve the claim")
+    metadata: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Additional module-specific data"
+    )
 
 
 class Issue(BaseModel):

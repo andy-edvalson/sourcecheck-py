@@ -12,16 +12,50 @@ threshold: 0.3
 # Validator assignments per field
 validators:
   content:
+    - temporal_drift_validator:
+        drift_threshold: 0           # 0 tolerance - any temporal mismatch is refuted (critical for medical accuracy)
+    - lexical_coverage_validator:
+        min_coverage: 0.20           # 20% lexical overlap required (lowered to handle paraphrasing)
+        min_phrase_words: 2
+        fabrication_penalty: 0.5     # 50% penalty for fabricated phrases
+        entity_boost: 0.20           # 20% boost for matching age + gender (handles "56 female" vs "56-year-old woman")
     - nli_validator:
-        refute_threshold: 0.90    # Require 96% confidence to refute (very strict)
-        support_threshold: 0.50   # Require 50% confidence to support (moderate)
+        refute_threshold: 0.85
+        support_threshold: 0.55
     - hybrid_bm25_minilm_validator:
         min_score: 0.30
 
 # Aggregation strategy with weighted voting
 aggregation:
-  strategy: "weighted_voting"  # Trust hybrid validator more
+  strategy: "weighted_voting"
   default_weights:
-    nli_validator: 0.3           # 30% weight - good for catching contradictions
+    temporal_drift_validator: 0.8      # 80% weight - high priority for temporal accuracy
+    lexical_coverage_validator: 0.5    # 50% weight - reduced to allow semantic validators more influence
+    nli_validator: 0.3                 # 30% weight - good for catching contradictions
     hybrid_bm25_minilm_validator: 0.7  # 70% weight - strong lexical+semantic matching
   explain_conflicts: true
+
+# Quality analysis modules
+quality_modules:
+  - name: semantic_quality
+    min_quality_score: 0.95      # Analyze if quality_score < 0.95 (validator disagreement)
+    min_confidence: 0.75         # Analyze if confidence < 0.75 (validator uncertainty)
+    analyze_insufficient: true   # Always analyze insufficient_evidence verdicts
+    max_issues: 3                # Report up to 3 issues per claim
+    min_phrase_length: 2         # Minimum words in a phrase to report
+  
+  - name: temporal_numeric_drift
+    min_quality_score: 1.1       # Always analyze (set > 1.0 to always trigger)
+    tolerance_percent: 10        # Allow 10% numeric difference
+    check_temporal: true         # Check temporal adverbs
+    check_numeric: true          # Check numeric values
+    max_issues: 3                # Report up to 3 issues per claim
+
+# Confidence penalty for quality issues
+quality_confidence_penalty: 0.9  # Multiply confidence by 0.9 when drift detected
+
+# Scoring configuration
+scoring:
+  method: "quality_weighted"  # Options: "simple", "quality_weighted"
+  # Note: quality_weighted multiplies each claim's verdict by its quality_score
+  # This ensures low-quality claims (with drift/issues) reduce the overall score

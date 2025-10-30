@@ -11,6 +11,7 @@ from .retrieval import create_retriever
 from .validators import create_validator
 from .rubric import detect_missing_claims, calculate_completeness_score
 from .arbitration import ArbitrationEngine
+from .quality import create_quality_module
 
 
 class Checker:
@@ -161,6 +162,64 @@ class Checker:
                 )
                 dispositions.append(final_disposition)
         
+        # Run quality modules on dispositions
+        quality_modules_config = self.config.get_policy("quality_modules", [])
+        confidence_penalty = self.config.get_policy("quality_confidence_penalty", 0.9)
+        
+        for disposition in dispositions:
+            for module_config in quality_modules_config:
+                try:
+                    module_name = module_config.get("name")
+                    module_params = {k: v for k, v in module_config.items() if k != "name"}
+                    
+                    quality_module = create_quality_module(module_name, module_params)
+                    result = quality_module.analyze(
+                        disposition=disposition,
+                        transcript=transcript
+                    )
+                    
+                    # Handle both old (list) and new (dict) return formats
+                    if isinstance(result, dict):
+                        quality_issues = result.get("issues", [])
+                        module_quality_score = result.get("quality_score", 1.0)
+                    else:
+                        # Legacy format: just a list of issues
+                        quality_issues = result
+                        module_quality_score = 1.0
+                    
+                    # Add quality issues to disposition
+                    disposition.quality_issues.extend(quality_issues)
+                    
+                    # Apply quality_score penalty from this module
+                    if module_quality_score < 1.0:
+                        current_score = disposition.quality_score or 1.0
+                        disposition.quality_score = current_score * module_quality_score
+                        
+                        if self.debug:
+                            print(f"DEBUG: Applied quality_score penalty from {module_name}: "
+                                  f"{current_score:.3f} → {disposition.quality_score:.3f}")
+                    
+                except Exception as e:
+                    if self.debug:
+                        print(f"DEBUG: Error running quality module {module_name}: {e}")
+            
+            # Apply confidence penalty for temporal/numeric drift issues
+            if disposition.quality_issues:
+                has_drift = any(
+                    issue.type in ("temporal_drift", "numeric_drift")
+                    for issue in disposition.quality_issues
+                )
+                
+                if has_drift:
+                    # Apply penalty to confidence (keeps verdict but lowers certainty)
+                    # Default to 1.0 if confidence not set
+                    original_confidence = disposition.confidence or 1.0
+                    disposition.confidence = original_confidence * confidence_penalty
+                    
+                    if self.debug:
+                        print(f"DEBUG: Applied confidence penalty for drift issues: "
+                              f"{original_confidence:.3f} → {disposition.confidence:.3f}")
+        
         # Audit for missing claims
         missing_claims = detect_missing_claims(
             transcript=transcript,
@@ -196,7 +255,11 @@ class Checker:
         summary: Dict[str, Any]
     ) -> float:
         """
-        Calculate overall verification score (pass/fail).
+        Calculate overall verification score with quality weighting.
+        
+        Scoring methods:
+        - "simple": Count supported claims (original behavior)
+        - "quality_weighted": Weight each claim by quality_score (recommended)
         
         Args:
             dispositions: List of claim dispositions
@@ -208,14 +271,39 @@ class Checker:
         if not dispositions:
             return 0.0
         
-        # Count supported vs total claims
-        supported_count = sum(
-            1 for d in dispositions
-            if d.verdict == "supported"
-        )
+        # Get scoring configuration
+        scoring_config = self.config.get_policy("scoring", {})
+        method = scoring_config.get("method", "quality_weighted")
         
-        # Base score on claim support rate
-        claim_score = supported_count / len(dispositions)
+        if method == "simple":
+            # Original method: just count supported claims
+            supported_count = sum(
+                1 for d in dispositions
+                if d.verdict == "supported"
+            )
+            claim_score = supported_count / len(dispositions)
+        
+        elif method == "quality_weighted":
+            # New method: weight by quality_score
+            # A claim only contributes fully if it's both supported AND high-quality
+            claim_scores = []
+            for d in dispositions:
+                # Base score: 1.0 if supported, 0.0 otherwise
+                base_score = 1.0 if d.verdict == "supported" else 0.0
+                
+                # Apply quality penalty
+                # quality_score reflects validator agreement (1.0 = perfect agreement)
+                quality_factor = d.quality_score if d.quality_score is not None else 1.0
+                
+                # Final claim score: verdict * quality
+                # Example: supported claim with 0.5 quality_score contributes 0.5
+                claim_score = base_score * quality_factor
+                claim_scores.append(claim_score)
+            
+            claim_score = sum(claim_scores) / len(claim_scores)
+        
+        else:
+            raise ValueError(f"Unknown scoring method: {method}")
         
         # Factor in completeness
         completeness_score = calculate_completeness_score(
@@ -226,7 +314,8 @@ class Checker:
         # Weighted average (70% claims, 30% completeness)
         overall = (0.7 * claim_score) + (0.3 * completeness_score)
         
-        return round(overall, 3)
+        # Clamp to [0, 1]
+        return round(max(0.0, min(1.0, overall)), 3)
     
     def _calculate_quality_score(self, dispositions: List[Disposition]) -> float:
         """

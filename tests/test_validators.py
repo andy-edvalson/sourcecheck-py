@@ -2,13 +2,13 @@
 Tests for validator system.
 """
 import pytest
-from checker.types import Claim, EvidenceSpan, Disposition
-from checker.validators import (
+from sourcecheck.types import Claim, EvidenceSpan, Disposition
+from sourcecheck.validators import (
     create_validator,
     list_validators,
     get_validator
 )
-from checker.validators.always_true import AlwaysTrueValidator
+from sourcecheck.validators.always_true import AlwaysTrueValidator
 
 
 def test_always_true_validator_registered():

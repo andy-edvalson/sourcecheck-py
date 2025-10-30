@@ -2,15 +2,15 @@
 Tests for main Checker orchestrator.
 """
 import pytest
-from checker import Checker
-from checker.types import Report
+from sourcecheck import Checker
+from sourcecheck.types import Report
 
 
 def test_checker_initialization():
     """Test that Checker initializes successfully."""
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     assert checker.config is not None
@@ -19,8 +19,8 @@ def test_checker_initialization():
 def test_verify_summary_returns_report():
     """Test that verify_summary returns a Report object."""
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     transcript = "Patient reports chest pain for 2 days. No fever or chills."
@@ -43,8 +43,8 @@ def test_verify_summary_returns_report():
 def test_verify_summary_extracts_claims():
     """Test that claims are extracted from summary."""
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     transcript = "Patient has hypertension and takes lisinopril."
@@ -66,8 +66,8 @@ def test_verify_summary_extracts_claims():
 def test_verify_summary_with_empty_summary():
     """Test verify_summary with empty summary."""
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     transcript = "Patient has chest pain."
@@ -83,8 +83,8 @@ def test_verify_summary_with_empty_summary():
 def test_verify_summary_with_metadata():
     """Test verify_summary with metadata."""
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     transcript = "Patient has chest pain."
@@ -104,8 +104,8 @@ def test_verify_summary_with_metadata():
 def test_report_to_dict():
     """Test that Report can be converted to dictionary."""
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     transcript = "Patient has chest pain."
@@ -126,8 +126,8 @@ def test_report_to_dict():
 def test_verify_summary_calculates_score():
     """Test that overall score is calculated."""
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     transcript = "Patient has chest pain and hypertension."

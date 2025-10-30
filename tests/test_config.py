@@ -3,14 +3,14 @@ Tests for configuration loading.
 """
 import pytest
 from pathlib import Path
-from checker.config import Config
+from sourcecheck.config import Config
 
 
 def test_config_loads_successfully():
     """Test that config files load without errors."""
     config = Config(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     assert config.schema is not None
@@ -22,8 +22,8 @@ def test_config_loads_successfully():
 def test_get_field_config():
     """Test retrieving field configuration."""
     config = Config(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     field_config = config.get_field_config('chief_complaint')
@@ -36,8 +36,8 @@ def test_get_field_config():
 def test_get_validators_for_field():
     """Test retrieving validators for a field."""
     config = Config(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     validators = config.get_validators_for_field('chief_complaint')
@@ -48,8 +48,8 @@ def test_get_validators_for_field():
 def test_get_required_fields():
     """Test retrieving required fields."""
     config = Config(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     required = config.get_required_fields()
@@ -61,8 +61,8 @@ def test_get_required_fields():
 def test_get_criticality_weight():
     """Test retrieving criticality weights."""
     config = Config(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     high_weight = config.get_criticality_weight('high')
@@ -75,8 +75,8 @@ def test_get_criticality_weight():
 def test_get_setting():
     """Test retrieving policy settings."""
     config = Config(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     
     fail_fast = config.get_setting('fail_fast')

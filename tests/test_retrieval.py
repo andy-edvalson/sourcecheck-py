@@ -2,9 +2,9 @@
 Tests for evidence retrieval functionality.
 """
 import pytest
-from checker.retrieval import create_retriever
-from checker.retrieval.bm25_retriever import BM25Retriever
-from checker.retrieval.semantic_retriever import SemanticRetriever
+from sourcecheck.retrieval import create_retriever
+from sourcecheck.retrieval.bm25_retriever import BM25Retriever
+from sourcecheck.retrieval.semantic_retriever import SemanticRetriever
 
 
 @pytest.fixture

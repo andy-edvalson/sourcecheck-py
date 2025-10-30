@@ -337,7 +337,44 @@ Examples:
             
             print(f"\nReport saved to: {args.output}")
             
-            # Print warnings if there are any non-supported claims
+            # Collect quality issues
+            quality_warnings = []
+            for d in report.dispositions:
+                if d.quality_issues:
+                    for issue in d.quality_issues:
+                        if issue.severity in ["high", "medium"]:
+                            quality_warnings.append({
+                                "claim": d.claim.text,
+                                "field": d.claim.field,
+                                "issue": issue,
+                                "quality_score": d.quality_score
+                            })
+            
+            # Print quality warnings first (more important)
+            if quality_warnings:
+                print("\nQUALITY CONCERNS DETECTED")
+                print("=" * 80)
+                print(f"Found {len(quality_warnings)} quality issue(s) in claims")
+                print(f"Overall Quality Score: {report.quality_score:.3f}")
+                print()
+                
+                for w in quality_warnings[:5]:  # Show first 5
+                    severity_label = "[HIGH]" if w["issue"].severity == "high" else "[MEDIUM]"
+                    claim_text = w["claim"][:70] + "..." if len(w["claim"]) > 70 else w["claim"]
+                    
+                    print(f"{severity_label} {w['field'].upper()}: \"{claim_text}\"")
+                    print(f"  Issue: {w['issue'].detail}")
+                    if w["quality_score"] is not None:
+                        print(f"  Quality Score: {w['quality_score']:.2f}")
+                    if w["issue"].suggestion:
+                        print(f"  Suggestion: {w['issue'].suggestion}")
+                    print()
+                
+                if len(quality_warnings) > 5:
+                    print(f"... and {len(quality_warnings) - 5} more quality issues")
+                    print()
+            
+            # Print validation warnings if there are any non-supported claims
             if refuted or insufficient:
                 print("\nVALIDATION WARNINGS")
                 print("=" * 80)

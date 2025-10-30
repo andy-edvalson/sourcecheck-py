@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example script demonstrating how to use the checker library.
+Example script demonstrating how to use the sourcecheck library.
 
 This example loads a sample transcript and summary, then runs verification
 to detect true and false claims.
@@ -8,17 +8,17 @@ to detect true and false claims.
 import json
 from pathlib import Path
 
-# Add parent directory to path to import checker
+# Add parent directory to path to import sourcecheck
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from checker import Checker
+from sourcecheck import Checker
 
 
 def main():
     """Run the example verification."""
     print("=" * 70)
-    print("Chart Checker - Example Verification")
+    print("SourceCheck - Example Verification")
     print("=" * 70)
     print()
     
@@ -43,8 +43,8 @@ def main():
     # Initialize checker
     print("Initializing checker...")
     checker = Checker(
-        schema_path="checker/schema.yaml",
-        policies_path="checker/policies.yaml"
+        schema_path="sourcecheck/schema.yaml",
+        policies_path="sourcecheck/policies.yaml"
     )
     print()
     

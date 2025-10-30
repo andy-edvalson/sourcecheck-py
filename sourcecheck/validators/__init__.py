@@ -19,6 +19,8 @@ from . import regex_validator
 from . import speaker_attribution_validator
 from . import nli_validator
 from . import negation_refuter
+from . import lexical_coverage_validator
+from . import temporal_drift_validator
 
 __all__ = [
     'Validator',

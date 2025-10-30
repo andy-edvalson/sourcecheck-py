@@ -1,24 +1,34 @@
-# Chart Checker
+# SourceCheck
 
-A Python library for verifying clinical summaries using extracted claims and transcript evidence.
+A Python library for verifying text claims against source documents using NLI and retrieval methods.
 
 ## Overview
 
-Chart Checker validates clinical summaries by:
-1. Extracting claims from structured summary fields
-2. Retrieving supporting evidence from source transcripts
+SourceCheck validates claims by:
+1. Extracting claims from structured text fields
+2. Retrieving supporting evidence from source documents
 3. Running configurable validators on each claim
-4. Auditing for completeness and missing information
+4. Providing detailed verification reports
+
+## Use Cases
+
+- **LLM Output Validation** - Verify AI-generated text against source material
+- **Agent Hallucination Detection** - Catch false claims in agent outputs
+- **Summarization Verification** - Ensure summaries match source documents
+- **RAG Pipeline Quality** - Validate retrieval-augmented generation results
+- **Content Verification** - Check any text against reference documents
 
 ## Installation
 
-### Setup Virtual Environment
+### From GitHub (Private Repository)
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/sourcecheck.git
+cd sourcecheck
+
 # Create virtual environment
 python3 -m venv venv
-
-# Activate virtual environment
 source venv/bin/activate  # On macOS/Linux
 # or
 venv\Scripts\activate  # On Windows
@@ -34,32 +44,41 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
-For a guided CLI walkthrough with troubleshooting tips, see `.codex/quickstart.md`.
-
 ```python
-from checker import Checker
+from sourcecheck import Checker
 
 # Initialize checker with config files
 checker = Checker(
-    schema_path="checker/schema.yaml",
-    policies_path="checker/policies.yaml"
+    schema_path="sourcecheck/schema.yaml",
+    policies_path="sourcecheck/policies.yaml"
 )
 
-# Verify a summary against a transcript
-transcript = "Patient reports chest pain for 2 days..."
-summary = {
+# Verify claims against source document
+source_text = "Patient reports chest pain for 2 days..."
+claims = {
     "chief_complaint": "Chest pain for 2 days",
     "history": "Patient has no significant medical history"
 }
 
-report = checker.verify_summary(transcript, summary)
-print(report)
+report = checker.verify_summary(source_text, claims)
+print(f"Verification Score: {report.overall_score:.2%}")
+```
+
+## CLI Usage
+
+```bash
+# Run verification from command line
+sourcecheck --transcript source.txt \
+            --summary claims.json \
+            --schema sourcecheck/schema.yaml \
+            --policies sourcecheck/policies.yaml \
+            --output report.json
 ```
 
 ## Project Structure
 
 ```
-checker/
+sourcecheck/
 ├── checker.py              # Main orchestrator
 ├── config.py               # Configuration loader
 ├── types.py                # Shared data types
@@ -67,34 +86,48 @@ checker/
 ├── policies.yaml           # Validator mappings
 ├── validators/             # Validation logic
 ├── retrieval/              # Evidence retrieval
-├── rubric/                 # Completeness auditing
+├── quality/                # Quality metrics
 └── claimextractor/         # Claim extraction
 ```
 
 ## Configuration
 
 ### schema.yaml
-Defines expected summary fields, types, and criticality levels.
+Defines expected claim fields, types, and criticality levels.
 
 ### policies.yaml
-Maps validators to specific summary fields.
+Maps validators to specific claim fields and configures retrieval strategies.
+
+## Available Validators
+
+- **BM25 Validator** - Keyword-based matching
+- **Semantic Validator** - Dense embedding similarity
+- **NLI Validator** - Natural language inference models
+- **Hybrid Validator** - Combined BM25 + semantic
+- **Context-Aware Validator** - Expanded context retrieval
+- **Negation Detector** - Identifies negated claims
 
 ## Development
 
 Run tests:
 ```bash
-pytest tests/
+pytest tests/ -v
 ```
 
-See `examples/` for working demonstrations.
+Run example:
+```bash
+python examples/run_example.py
+```
 
-## Future Enhancements
+## Documentation
 
-- Integration with Claimify for advanced claim extraction
-- Dense retrieval with embeddings
-- Additional validator implementations
-- Async support for external API calls
+- [Configuration Guide](CONFIGURATION_GUIDE.md)
+- [Development Guide](DEVELOPMENT.md)
+- [CLI Usage](CLI_USAGE.md)
+- [Performance Optimization](PERFORMANCE_OPTIMIZATION.md)
 
 ## License
 
-TBD
+Proprietary - All Rights Reserved
+
+Copyright (c) 2025. This software and associated documentation files are proprietary and confidential. Unauthorized copying, distribution, or use is strictly prohibited.

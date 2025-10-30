@@ -1,4 +1,4 @@
-version: "1.0"
+version: "2.0"
 
 retriever: semantic
 
@@ -112,3 +112,41 @@ settings:
   context_boost: 0.3
   embedding_threshold: 0.65
   bm25_weight: 0.5
+
+# Aggregation strategy with weighted voting (for fields with multiple validators)
+aggregation:
+  strategy: "weighted_voting"
+  default_weights:
+    bm25_validator: 0.6
+    hybrid_bm25_minilm_validator: 0.7
+    nli_validator: 0.3
+    negation_refuter: 0.8
+    minilm_validator: 0.5
+    regex_validator: 1.0
+    speaker_attribution_validator: 1.0
+  explain_conflicts: true
+
+# Quality analysis modules (apply to all fields)
+quality_modules:
+  # NOTE: semantic_quality disabled due to false positives with structured summaries
+  # - name: semantic_quality
+  #   min_quality_score: 0.95
+  #   min_confidence: 0.75
+  #   analyze_insufficient: true
+  #   max_issues: 3
+  #   min_phrase_length: 2
+  
+  - name: temporal_numeric_drift
+    min_quality_score: 1.1       # Always analyze (set > 1.0 to always trigger)
+    tolerance_percent: 10        # Allow 10% numeric difference
+    check_temporal: true         # Check temporal adverbs (e.g., "this morning")
+    check_numeric: true          # Check numeric values (e.g., "6 years" vs "4 years")
+    max_issues: 3                # Report up to 3 issues per claim
+
+# Confidence penalty for quality issues
+quality_confidence_penalty: 0.9  # Multiply confidence by 0.9 when drift detected
+
+# Scoring configuration
+scoring:
+  method: "quality_weighted"  # Weight each claim by its quality_score
+  # This ensures low-quality claims (with drift/issues) reduce the overall score

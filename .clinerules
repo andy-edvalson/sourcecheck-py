@@ -1,17 +1,17 @@
-# Chart-Checker Project Rules
+# SourceCheck Project Rules
 
 ## Project Overview
-A configurable Python library for validating clinical summaries against source transcripts using NLI and other ML models. The system extracts claims from structured summaries, retrieves evidence from transcripts, and validates using multiple configurable validators.
+A configurable Python library for validating text claims against source documents using NLI and other ML models. The system extracts claims from structured text, retrieves evidence from source documents, and validates using multiple configurable validators.
 
 ## Architecture
 
 ### Core Components
-1. **Checker** (`checker/checker.py`) - Main orchestrator
-2. **Config** (`checker/config.py`) - YAML configuration loader
-3. **Validators** (`checker/validators/`) - Pluggable validation logic
-4. **Retrievers** (`checker/retrieval/`) - Evidence retrieval strategies
-5. **Claim Extractors** (`checker/claimextractor/`) - Extract claims from summaries
-6. **Types** (`checker/types.py`) - Shared data structures
+1. **Checker** (`sourcecheck/checker.py`) - Main orchestrator
+2. **Config** (`sourcecheck/config.py`) - YAML configuration loader
+3. **Validators** (`sourcecheck/validators/`) - Pluggable validation logic
+4. **Retrievers** (`sourcecheck/retrieval/`) - Evidence retrieval strategies
+5. **Claim Extractors** (`sourcecheck/claimextractor/`) - Extract claims from text
+6. **Types** (`sourcecheck/types.py`) - Shared data structures
 
 ### Design Patterns
 - **Registry Pattern**: Validators and retrievers use decorator-based registration
@@ -38,11 +38,11 @@ Maps validators to fields:
 ## Common Workflows
 
 ### Adding a New Validator
-1. Create `checker/validators/my_validator.py`
+1. Create `sourcecheck/validators/my_validator.py`
 2. Inherit from `Validator` base class
 3. Register with `@register_validator("my_validator")`
 4. Implement `validate()` method returning `Disposition`
-5. Import in `checker/validators/__init__.py`
+5. Import in `sourcecheck/validators/__init__.py`
 6. Add to `policies.yaml` for relevant fields
 
 ### Testing Validation
@@ -117,11 +117,11 @@ python examples/test_extraction.py
 python examples/run_real_example.py
 
 # CLI Usage
-chart-checker --transcript examples/real_transcript.txt \
-              --summary examples/real_summary.json \
-              --schema checker/schema_configured.yaml \
-              --policies checker/policies.yaml \
-              --output report.json
+sourcecheck --transcript examples/real_transcript.txt \
+            --summary examples/real_summary.json \
+            --schema sourcecheck/schema_configured.yaml \
+            --policies sourcecheck/policies.yaml \
+            --output report.json
 ```
 
 ## Real Data Notes

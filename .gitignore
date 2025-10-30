@@ -25,6 +25,8 @@ venv/
 env/
 ENV/
 .venv
+.venv-*/
+chart-checker/
 
 # IDE
 .vscode/
@@ -41,6 +43,9 @@ htmlcov/
 
 # Examples output
 examples/verification_report.json
+
+# Local development folder - for testing with real data, domain-specific configs, etc.
+local/
 
 # CLI output reports
 validation_report.json
