@@ -28,23 +28,23 @@ class Checker:
     
     def __init__(
         self,
-        schema_path: str = "checker/schema.yaml",
-        policies_path: str = "checker/policies.yaml",
+        schema: Dict[str, Any],
+        policies: Dict[str, Any],
         cache_retrievers: bool = True,
         max_cache_size: int = 100,
         debug: bool = False
     ):
         """
-        Initialize the Checker with configuration files.
+        Initialize the Checker with configuration dicts.
         
         Args:
-            schema_path: Path to schema.yaml
-            policies_path: Path to policies.yaml
+            schema: Schema configuration dict
+            policies: Policies configuration dict
             cache_retrievers: Whether to cache retriever instances (default: True)
             max_cache_size: Maximum number of retrievers to cache (default: 100)
             debug: Enable debug output (default: False)
         """
-        self.config = Config(schema_path, policies_path)
+        self.config = Config(schema, policies)
         self.cache_retrievers = cache_retrievers
         self.max_cache_size = max_cache_size
         self.debug = debug

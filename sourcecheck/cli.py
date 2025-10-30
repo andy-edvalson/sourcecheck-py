@@ -281,11 +281,33 @@ Examples:
         print(f"Initializing checker with schema: {schema_path}")
         print(f"                      and policies: {policies_path}")
     
-    # Initialize checker
+    # Load schema and policies from YAML files
+    if args.verbose:
+        print(f"Loading schema from: {schema_path}")
+        print(f"Loading policies from: {policies_path}")
+    
+    try:
+        import yaml
+        
+        with open(schema_path) as f:
+            schema = yaml.safe_load(f)
+        
+        with open(policies_path) as f:
+            policies = yaml.safe_load(f)
+        
+        if args.verbose:
+            print(f"Schema version: {schema.get('version', 'unknown')}")
+            print(f"Policies version: {policies.get('version', 'unknown')}")
+    
+    except Exception as e:
+        print(f"Error loading configuration files: {e}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Initialize checker with dicts
     try:
         checker = Checker(
-            schema_path=str(schema_path),
-            policies_path=str(policies_path),
+            schema=schema,
+            policies=policies,
             debug=args.debug
         )
     except Exception as e:

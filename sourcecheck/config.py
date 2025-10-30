@@ -1,42 +1,29 @@
 """
-Configuration loader for schema and policy files.
+Configuration manager for schema and policy dictionaries.
 """
-import yaml
-from pathlib import Path
 from typing import Dict, Any, Optional
 
 
 class Config:
-    """Manages loading and accessing schema and policy configurations."""
+    """Manages schema and policy configurations (as dicts)."""
     
-    def __init__(self, schema_path: str, policies_path: str):
+    def __init__(self, schema: Dict[str, Any], policies: Dict[str, Any]):
         """
-        Initialize configuration loader.
+        Initialize configuration with schema and policies dicts.
         
         Args:
-            schema_path: Path to schema.yaml file
-            policies_path: Path to policies.yaml file
+            schema: Schema configuration dict
+            policies: Policies configuration dict
         """
-        self.schema_path = Path(schema_path)
-        self.policies_path = Path(policies_path)
+        if not isinstance(schema, dict):
+            raise TypeError(f"schema must be dict, got {type(schema)}")
+        if not isinstance(policies, dict):
+            raise TypeError(f"policies must be dict, got {type(policies)}")
         
-        self.schema = self._load_yaml(self.schema_path)
-        self.policies = self._load_yaml(self.policies_path)
+        self.schema = schema
+        self.policies = policies
         
         self._validate_config()
-    
-    def _load_yaml(self, path: Path) -> Dict[str, Any]:
-        """Load YAML file and return parsed content."""
-        if not path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {path}")
-        
-        with open(path, 'r') as f:
-            content = yaml.safe_load(f)
-        
-        if content is None:
-            raise ValueError(f"Empty configuration file: {path}")
-        
-        return content
     
     def _validate_config(self) -> None:
         """Validate that required configuration keys exist."""
