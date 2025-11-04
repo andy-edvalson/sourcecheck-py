@@ -2,7 +2,7 @@
 
 ## Package Overview
 
-The `chart-checker` library verifies clinical summaries by comparing claims against source transcripts. The architecture is modular, extensible, and production-ready with multiple validators, retrievers, and quality analysis modules.
+The `chart-checker` library verifies summaries by comparing claims against source transcripts. The architecture is modular, extensible, and production-ready with multiple validators, retrievers, and quality analysis modules.
 
 ## Core Components
 

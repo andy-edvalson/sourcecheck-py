@@ -35,6 +35,7 @@ class SemanticRetriever(Retriever):
         # Configuration
         self.contextualize = self.config.get('contextualize_claims', True)
         self.claim_prefixes = self.config.get('claim_prefixes', {})
+        self.numeric_boost = self.config.get('numeric_boost', 0.15)  # Boost score by 15% if both have numbers
         
         # Build sentence-level chunks (no overlap)
         self.sentences = []
@@ -74,6 +75,10 @@ class SemanticRetriever(Retriever):
                 current_pos = pos + len(sentence)
         
         print(f"Semantic retriever: Split transcript into {len(self.sentences)} sentences")
+    
+    def _has_numbers(self, text: str) -> bool:
+        """Check if text contains any numbers (digits)."""
+        return bool(re.search(r'\d', text))
     
     def _contextualize_claim(self, claim: str, metadata: dict = None) -> str:
         """
@@ -125,6 +130,9 @@ class SemanticRetriever(Retriever):
         # Get claim embedding
         claim_embedding = self.embedding_service.get_embedding(query)
         
+        # Check if claim has numbers
+        claim_has_numbers = self._has_numbers(claim)
+        
         # Score all sentences
         scored_sentences = []
         for i, sentence in enumerate(self.sentences):
@@ -136,6 +144,10 @@ class SemanticRetriever(Retriever):
                 claim_embedding,
                 sent_embedding
             )
+            
+            # Apply numeric boost if both claim and evidence have numbers
+            if claim_has_numbers and self._has_numbers(sentence):
+                similarity = min(1.0, similarity + self.numeric_boost)
             
             scored_sentences.append((i, similarity))
         

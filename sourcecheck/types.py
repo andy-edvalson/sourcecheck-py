@@ -4,12 +4,49 @@ Shared data types for the checker package.
 Domain-agnostic types for validating structured documents against source material.
 """
 from typing import List, Literal, Optional, Dict, Any, Union
+from enum import Enum
 from pydantic import BaseModel, Field, field_validator, computed_field
 
 
 # Type aliases for common literals
 VerdictType = Literal["supported", "refuted", "insufficient_evidence"]
 SeverityType = Literal["critical", "high", "medium", "low"]
+
+
+class ScorePenalty(Enum):
+    """
+    Standard quality score penalty multipliers.
+    
+    These values are applied as multipliers to quality_score when issues are detected.
+    Lower values = higher penalty.
+    
+    Usage:
+        quality_score *= ScorePenalty.HIGH.value  # 50% penalty
+    """
+    HIGH = 0.5      # 50% penalty - critical issues (e.g., unit mismatches in medical context)
+    MEDIUM = 0.8    # 20% penalty - moderate issues (e.g., missing numbers)
+    LOW = 0.9       # 10% penalty - minor issues (e.g., temporal context omissions)
+    NONE = 1.0      # No penalty - informational only
+    
+    @classmethod
+    def from_string(cls, severity: str) -> "ScorePenalty":
+        """
+        Convert severity string to ScorePenalty enum.
+        
+        Args:
+            severity: Severity level ("high", "medium", "low", "none")
+        
+        Returns:
+            Corresponding ScorePenalty enum value
+        
+        Raises:
+            ValueError: If severity string is invalid
+        """
+        severity_upper = severity.upper()
+        try:
+            return cls[severity_upper]
+        except KeyError:
+            raise ValueError(f"Invalid severity: {severity}. Must be one of: high, medium, low, none")
 
 
 class Claim(BaseModel):
@@ -58,6 +95,10 @@ class ValidatorResult(BaseModel):
     verdict: VerdictType = Field(..., description="Validation verdict")
     explanation: str = Field(default="", description="Explanation of verdict")
     score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence score")
+    critical: bool = Field(
+        default=False,
+        description="Whether this is a critical issue that should override normal voting"
+    )
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
 
@@ -78,6 +119,10 @@ class Disposition(BaseModel):
     evidence: List[EvidenceSpan] = Field(default_factory=list, description="Supporting evidence")
     validator: str = Field(default="unknown", description="Primary validator used")
     explanation: str = Field(default="", description="Explanation of verdict")
+    critical: bool = Field(
+        default=False,
+        description="Whether this is a critical issue that should override normal voting (e.g., unit mismatch, safety concern)"
+    )
     validator_results: List[ValidatorResult] = Field(
         default_factory=list,
         description="Results from all validators"
@@ -92,6 +137,10 @@ class Disposition(BaseModel):
     quality_issues: List["QualityIssue"] = Field(
         default_factory=list,
         description="Detected quality issues (omissions, vagueness, etc.)"
+    )
+    metadata: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Additional validator-specific metadata"
     )
     
     @computed_field

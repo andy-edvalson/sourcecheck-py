@@ -6,6 +6,15 @@ from typing import List, Dict, Any, Optional
 from ..types import Claim
 from ..utils.path_resolver import PathResolver
 
+# Try to import spacy for compound claim splitting
+try:
+    import spacy
+    SPACY_AVAILABLE = True
+    _nlp = None  # Lazy load
+except ImportError:
+    SPACY_AVAILABLE = False
+    _nlp = None
+
 
 def extract_claims_configurable(
     summary,  # Can be Dict[str, Any] or str
@@ -124,12 +133,29 @@ def extract_by_method(
     claims = []
     
     if method == 'single_value':
-        # Entire field is one claim
-        claims.append(Claim(
-            text=field_value.strip(),
-            field=field_name,
-            metadata={"extraction_method": "single_value"}
-        ))
+        # Check if compound claim splitting is enabled
+        split_compound = config.get('split_compound_claims', False)
+        min_claim_length = config.get('min_claim_length', 5)
+        
+        if split_compound:
+            # Try to split compound claims
+            sub_texts = split_compound_claims(field_value, min_claim_length)
+            for sub_text in sub_texts:
+                claims.append(Claim(
+                    text=sub_text.strip(),
+                    field=field_name,
+                    metadata={
+                        "extraction_method": "single_value",
+                        "compound_split": len(sub_texts) > 1
+                    }
+                ))
+        else:
+            # Entire field is one claim
+            claims.append(Claim(
+                text=field_value.strip(),
+                field=field_name,
+                metadata={"extraction_method": "single_value"}
+            ))
     
     elif method == 'delimited':
         # Split on delimiter
@@ -253,8 +279,28 @@ def extract_by_method(
     elif method == 'sentence_split':
         # Split text into sentences
         sentences = split_into_sentences(field_value)
+        
+        # Check if compound claim splitting is enabled
+        split_compound = config.get('split_compound_claims', False)
+        min_claim_length = config.get('min_claim_length', 5)
+        
         for sentence in sentences:
-            if sentence.strip():
+            if not sentence.strip():
+                continue
+            
+            if split_compound:
+                # Further split compound claims within each sentence
+                sub_texts = split_compound_claims(sentence, min_claim_length)
+                for sub_text in sub_texts:
+                    claims.append(Claim(
+                        text=sub_text.strip(),
+                        field=field_name,
+                        metadata={
+                            "extraction_method": "sentence_split",
+                            "compound_split": len(sub_texts) > 1
+                        }
+                    ))
+            else:
                 claims.append(Claim(
                     text=sentence.strip(),
                     field=field_name,
@@ -279,7 +325,131 @@ def has_bullet_format(text: str, delimiter: str = '\n-') -> bool:
 
 
 def split_into_sentences(text: str) -> List[str]:
-    """Split text into sentences using simple regex."""
-    pattern = r'(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])$'
-    sentences = re.split(pattern, text)
-    return [s.strip() for s in sentences if s.strip()]
+    """
+    Split text into sentences using spaCy's sentence segmentation.
+    
+    This properly handles abbreviations (Dr., Mrs., etc.), decimals,
+    and other edge cases that simple regex splitting misses.
+    """
+    if not SPACY_AVAILABLE:
+        # Fallback to simple regex if spaCy not available
+        pattern = r'(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])$'
+        sentences = re.split(pattern, text)
+        return [s.strip() for s in sentences if s.strip()]
+    
+    global _nlp
+    if _nlp is None:
+        try:
+            _nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            # Model not installed, fallback to regex
+            pattern = r'(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])$'
+            sentences = re.split(pattern, text)
+            return [s.strip() for s in sentences if s.strip()]
+    
+    # Use spaCy's sentence segmentation
+    doc = _nlp(text)
+    sentences = [sent.text.strip() for sent in doc.sents]
+    return [s for s in sentences if s]  # Filter empty strings
+
+
+def split_compound_claims(text: str, min_claim_length: int = 5) -> List[str]:
+    """
+    Split compound claims using SpaCy dependency parsing.
+    
+    Identifies independent clauses connected by conjunctions (and, but, or)
+    and splits them into separate claims. This is domain-agnostic and uses
+    grammatical structure rather than keyword matching.
+    
+    Examples:
+        "30 employees and 3 launches" → ["30 employees", "3 launches"]
+        "hired 30 and promoted 5" → ["hired 30", "promoted 5"]
+        "bread and butter" → ["bread and butter"] (no split - no second verb)
+    
+    Args:
+        text: Text to split
+        min_claim_length: Minimum words for a valid sub-claim (default: 5)
+    
+    Returns:
+        List of sub-claims (or original text if no split needed)
+    """
+    print(f"[CLAIM SPLITTING] Attempting to split: '{text[:100]}...'")
+    
+    if not SPACY_AVAILABLE:
+        # SpaCy not available, return original text
+        print(f"[CLAIM SPLITTING] SpaCy not available, returning original")
+        return [text]
+    
+    print(f"[CLAIM SPLITTING] SpaCy is available")
+    
+    global _nlp
+    if _nlp is None:
+        print(f"[CLAIM SPLITTING] Loading SpaCy model 'en_core_web_sm'...")
+        try:
+            _nlp = spacy.load("en_core_web_sm")
+            print(f"[CLAIM SPLITTING] Model loaded successfully")
+        except OSError as e:
+            # Model not installed, return original text
+            print(f"[CLAIM SPLITTING] Failed to load model: {e}")
+            print(f"[CLAIM SPLITTING] Returning original text")
+            return [text]
+    else:
+        print(f"[CLAIM SPLITTING] Using cached SpaCy model")
+    
+    doc = _nlp(text)
+    
+    # Debug: Show all tokens and their properties
+    print(f"[CLAIM SPLITTING] Analyzing {len(doc)} tokens")
+    for token in doc:
+        if token.pos_ == "CCONJ" or token.pos_ == "VERB":
+            print(f"  Token: '{token.text}' pos={token.pos_} dep={token.dep_} head='{token.head.text}' head_pos={token.head.pos_}")
+    
+    # Find coordinating conjunctions that connect clauses
+    conj_positions = []
+    for token in doc:
+        # Look for coordinating conjunctions (and, but, or) that connect verbs
+        if token.pos_ == "CCONJ" and token.dep_ == "cc":
+            print(f"[CLAIM SPLITTING] Found conjunction '{token.text}' at position {token.i}, head='{token.head.text}' head_pos={token.head.pos_}")
+            # Check if this conjunction connects verbs or verb phrases
+            if token.head.pos_ == "VERB":
+                print(f"[CLAIM SPLITTING] ✓ Conjunction connects verbs, will split here")
+                conj_positions.append(token.i)
+            else:
+                print(f"[CLAIM SPLITTING] ✗ Conjunction head is not a verb, skipping")
+    
+    # If no conjunctions found, return original text
+    if not conj_positions:
+        print(f"[CLAIM SPLITTING] No valid conjunctions found, returning original")
+        return [text]
+    
+    # Split at conjunction boundaries
+    sub_claims = []
+    start = 0
+    
+    for conj_idx in conj_positions:
+        # Get text before conjunction
+        before_tokens = doc[start:conj_idx]
+        if before_tokens:
+            before_text = before_tokens.text.strip()
+            # Check if it has enough words and contains a verb
+            if len(before_text.split()) >= min_claim_length and has_verb(before_tokens):
+                sub_claims.append(before_text)
+                start = conj_idx + 1  # Skip the conjunction
+    
+    # Add remaining text after last conjunction
+    if start < len(doc):
+        after_tokens = doc[start:]
+        after_text = after_tokens.text.strip()
+        if len(after_text.split()) >= min_claim_length and has_verb(after_tokens):
+            sub_claims.append(after_text)
+    
+    # If we successfully split, return sub-claims; otherwise return original
+    if len(sub_claims) > 1:
+        return sub_claims
+    else:
+        return [text]
+
+
+def has_verb(tokens) -> bool:
+    """Check if a span of tokens contains a verb."""
+    return any(token.pos_ == "VERB" for token in tokens)

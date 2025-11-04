@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `chart-checker` CLI tool verifies clinical summaries against transcripts using configurable validators and policies.
+The `chart-checker` CLI tool verifies summaries against larger text using configurable validators and policies.
 
 ## Installation
 
@@ -138,7 +138,7 @@ Only shows errors (useful for scripting).
 
 ### Transcript File
 
-Plain text file containing the clinical transcript:
+Plain text file containing the transcript:
 
 ```
 examples/real_transcript.txt

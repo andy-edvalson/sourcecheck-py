@@ -91,10 +91,10 @@ class SemanticQualityModule(QualityModule):
         
         Args:
             disposition: Validation result with claim and evidence
-            transcript: Full transcript (not used in this simple version)
+            transcript: Full transcript for fabrication detection
         
         Returns:
-            List of detected quality issues
+            Dict with issues list and quality_score
         """
         if not self.should_analyze(disposition):
             return {"issues": [], "quality_score": 1.0}
@@ -107,27 +107,32 @@ class SemanticQualityModule(QualityModule):
         
         issues = []
         
-        # Find important missing details (evidence → claim)
-        missing_details = self._find_missing_important_details(
-            claim_text,
-            evidence_text
-        )
+        # DISABLED: Omission checking produces too many false positives
+        # Summaries are SUPPOSED to omit details - that's the point of summarization
+        # We only want to flag UNSUPPORTED details (fabrications), not omissions
         
-        # Create quality issues for omissions
-        for detail in missing_details[:self.max_issues]:
-            issues.append(QualityIssue(
-                type="omission",
-                severity="low",
-                detail=f"Claim omits important detail: '{detail}'",
-                evidence_snippet=self._get_snippet(evidence_text, detail),
-                claim_snippet=claim_text[:100],
-                suggestion=f"Consider including: '{detail}'"
-            ))
+        # # Find important missing details (evidence → claim)
+        # missing_details = self._find_missing_important_details(
+        #     claim_text,
+        #     evidence_text
+        # )
+        # 
+        # # Create quality issues for omissions
+        # for detail in missing_details[:self.max_issues]:
+        #     issues.append(QualityIssue(
+        #         type="omission",
+        #         severity="low",
+        #         detail=f"Claim omits important detail: '{detail}'",
+        #         evidence_snippet=self._get_snippet(evidence_text, detail),
+        #         claim_snippet=claim_text[:100],
+        #         suggestion=f"Consider including: '{detail}'"
+        #     ))
         
-        # Find fabricated details (claim → evidence)
+        # Find fabricated details (claim → full transcript, not just evidence)
+        # This fixes the Sarah Chen bug - check against full source, not retrieved chunks
         fabricated_details = self._find_fabricated_details(
             claim_text,
-            evidence_text
+            transcript  # Use full transcript instead of evidence_text
         )
         
         # Create quality issues for fabrications

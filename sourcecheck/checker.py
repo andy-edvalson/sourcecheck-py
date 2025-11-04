@@ -16,7 +16,7 @@ from .quality import create_quality_module
 
 class Checker:
     """
-    Main orchestrator for verifying clinical summaries.
+    Main orchestrator for verifying summaries.
     
     The Checker coordinates the entire verification pipeline:
     1. Extract claims from summary fields
@@ -135,11 +135,14 @@ class Checker:
                     )
                     
                     # Collect this validator's result
+                    # IMPORTANT: Copy critical flag and metadata from disposition
                     validator_results.append(ValidatorResult(
                         validator=validator_name,
                         verdict=disposition.verdict,
                         explanation=disposition.explanation,
-                        score=None  # Could extract from explanation if needed
+                        score=None,  # Could extract from explanation if needed
+                        critical=disposition.critical,  # ✅ Copy critical flag
+                        metadata=disposition.metadata
                     ))
                             
                 except Exception as e:
@@ -219,6 +222,46 @@ class Checker:
                     if self.debug:
                         print(f"DEBUG: Applied confidence penalty for drift issues: "
                               f"{original_confidence:.3f} → {disposition.confidence:.3f}")
+        
+        # Apply verdict thresholds (if configured)
+        verdict_thresholds = self.config.get_policy("verdict_thresholds", {})
+        if verdict_thresholds:
+            min_score = verdict_thresholds.get("min_score", 0.0)
+            min_quality_score = verdict_thresholds.get("min_quality_score", 0.0)
+            fail_verdict = verdict_thresholds.get("fail_verdict", "insufficient_evidence")
+            
+            for disposition in dispositions:
+                # Only apply to "supported" claims (don't override refuted/insufficient)
+                if disposition.verdict == "supported":
+                    score = disposition.confidence or 0.0
+                    quality_score = disposition.quality_score or 1.0
+                    
+                    # Check if both thresholds are met
+                    score_pass = score >= min_score
+                    quality_pass = quality_score >= min_quality_score
+                    
+                    if not (score_pass and quality_pass):
+                        # Override verdict
+                        original_verdict = disposition.verdict
+                        disposition.verdict = fail_verdict
+                        
+                        # Update explanation
+                        reasons = []
+                        if not score_pass:
+                            reasons.append(f"score={score:.2f} < min_score={min_score}")
+                        if not quality_pass:
+                            reasons.append(f"quality_score={quality_score:.2f} < min_quality_score={min_quality_score}")
+                        
+                        threshold_explanation = f"Failed verdict thresholds: {', '.join(reasons)}"
+                        
+                        if disposition.explanation:
+                            disposition.explanation = f"{threshold_explanation}. Original: {disposition.explanation}"
+                        else:
+                            disposition.explanation = threshold_explanation
+                        
+                        if self.debug:
+                            print(f"DEBUG: Overrode verdict from '{original_verdict}' to '{fail_verdict}' "
+                                  f"due to threshold failure: {threshold_explanation}")
         
         # Audit for missing claims
         missing_claims = detect_missing_claims(

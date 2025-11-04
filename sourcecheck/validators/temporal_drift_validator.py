@@ -2,13 +2,25 @@
 Temporal Drift Validator.
 
 Detects mismatched or directionally inconsistent temporal expressions
-between claims and evidence.
+between claims and evidence, as well as critical numeric mismatches.
 """
 import re
-from typing import List
+import logging
+from typing import List, Tuple
 from .base import Validator
 from .registry import register_validator
 from ..types import Claim, EvidenceSpan, Disposition
+
+logger = logging.getLogger(__name__)
+
+# Try to import pint for unit handling
+try:
+    from pint import UnitRegistry
+    PINT_AVAILABLE = True
+    _ureg = None  # Lazy load
+except ImportError:
+    PINT_AVAILABLE = False
+    _ureg = None
 
 
 @register_validator("temporal_drift_validator")
@@ -26,6 +38,7 @@ class TemporalDriftValidator(Validator):
     def __init__(self, config=None, debug=False):
         super().__init__(config, debug)
         self.drift_threshold = self.config.get("drift_threshold", 7)  # days
+        self.check_numeric_drift = self.config.get("check_numeric_drift", True)  # NEW: Enable numeric checking
         
         # Relative temporal expressions mapped to days offset
         self.relative_map = {
@@ -44,10 +57,114 @@ class TemporalDriftValidator(Validator):
         
         # Pattern for numeric temporal expressions (e.g., "3 days ago")
         self.numeric_pattern = re.compile(r"(\d+)\s*(day|week|month|year)s?\b", re.I)
+    
+    def _get_ureg(self):
+        """Lazy load Pint unit registry."""
+        global _ureg
+        if _ureg is None and PINT_AVAILABLE:
+            try:
+                _ureg = UnitRegistry()
+            except Exception as e:
+                logger.warning(f"Failed to initialize Pint UnitRegistry: {e}")
+        return _ureg
+    
+    def _extract_quantities_with_pint(self, text: str) -> List[Tuple[str, str, str]]:
+        """
+        Extract quantities with units using Pint.
+        
+        Returns:
+            List of (value, original_unit, normalized_unit) tuples
+        """
+        ureg = self._get_ureg()
+        if not ureg:
+            return []
+        
+        quantities = []
+        quantity_pattern = r'(\d+(?:\.\d+)?)\s*(milligrams?|grams?|kilograms?|mg|g|kg|milliliters?|liters?|ml|l)'
+        
+        for match in re.finditer(quantity_pattern, text, re.IGNORECASE):
+            value = match.group(1)
+            unit_text = match.group(2).lower()
+            
+            try:
+                quantity = ureg(f"{value} {unit_text}")
+                normalized_unit = f"{quantity.units:~}"
+                quantities.append((value, unit_text, normalized_unit))
+                logger.debug(f"[VALIDATOR] Extracted: {value} {unit_text} → {normalized_unit}")
+            except Exception as e:
+                logger.debug(f"[VALIDATOR] Could not parse '{value} {unit_text}': {e}")
+                continue
+        
+        return quantities
+    
+    def _check_numeric_drift(self, claim_text: str, evidence_spans: List[EvidenceSpan]) -> Tuple[bool, str]:
+        """
+        Check for critical numeric mismatches (especially unit mismatches).
+        
+        Returns:
+            Tuple of (has_critical_mismatch, explanation)
+        """
+        logger.info(f"[VALIDATOR CHECK] Starting numeric drift check. check_numeric_drift={self.check_numeric_drift}")
+        
+        if not self.check_numeric_drift:
+            logger.info("[VALIDATOR CHECK] Numeric drift checking is disabled")
+            return False, ""
+        
+        # Extract quantities from claim
+        claim_quantities = self._extract_quantities_with_pint(claim_text)
+        logger.info(f"[VALIDATOR CHECK] Claim quantities: {claim_quantities}")
+        
+        if not claim_quantities:
+            logger.info("[VALIDATOR CHECK] No quantities found in claim")
+            return False, ""  # No quantities to check
+        
+        # Check high-relevance evidence
+        high_relevance = [ev for ev in evidence_spans if ev.score > 0.5]
+        logger.info(f"[VALIDATOR CHECK] High-relevance evidence count: {len(high_relevance)}")
+        
+        if not high_relevance:
+            logger.info("[VALIDATOR CHECK] No high-relevance evidence")
+            return False, ""
+        
+        # Check each claim quantity
+        for c_value, c_orig_unit, c_norm_unit in claim_quantities:
+            found_match = False
+            unit_mismatch = None
+            
+            for ev in high_relevance:
+                ev_quantities = self._extract_quantities_with_pint(ev.text)
+                
+                for e_value, e_orig_unit, e_norm_unit in ev_quantities:
+                    # Exact match
+                    if c_value == e_value and c_norm_unit == e_norm_unit:
+                        found_match = True
+                        break
+                    
+                    # Unit mismatch (same value, different unit) - CRITICAL!
+                    if c_value == e_value and c_norm_unit != e_norm_unit:
+                        unit_mismatch = (e_value, e_norm_unit)
+                        logger.info(f"[VALIDATOR] UNIT MISMATCH: {c_value} {c_norm_unit} vs {e_value} {e_norm_unit}")
+                        break
+                
+                if found_match or unit_mismatch:
+                    break
+            
+            # If we found a unit mismatch, this is critical - refute!
+            if unit_mismatch:
+                explanation = f"CRITICAL UNIT MISMATCH: Claim says '{c_value} {c_norm_unit}' but evidence says '{unit_mismatch[0]} {unit_mismatch[1]}'"
+                logger.info(f"[VALIDATOR CHECK] Returning critical mismatch: {explanation}")
+                return True, explanation
+        
+        logger.info("[VALIDATOR CHECK] No critical mismatches found")
+        return False, ""
 
     def validate(self, claim: Claim, evidence: List[EvidenceSpan], transcript: str) -> Disposition:
         """
-        Validate temporal consistency between claim and evidence.
+        Validate temporal and numeric consistency between claim and evidence.
+        
+        Priority:
+        1. Check for critical numeric mismatches (unit errors) - REFUTE immediately
+        2. Check temporal drift
         
         Args:
             claim: Claim to validate
@@ -55,7 +172,7 @@ class TemporalDriftValidator(Validator):
             transcript: Full transcript (not used)
         
         Returns:
-            Disposition with verdict and temporal drift metrics
+            Disposition with verdict and metrics
         """
         if not evidence:
             return Disposition(
@@ -66,6 +183,20 @@ class TemporalDriftValidator(Validator):
                 explanation="No evidence available"
             )
         
+        # PRIORITY 1: Check for critical numeric mismatches (e.g., unit errors)
+        has_numeric_error, numeric_explanation = self._check_numeric_drift(claim.text, evidence)
+        if has_numeric_error:
+            return Disposition(
+                claim=claim,
+                verdict="refuted",
+                critical=True,  # Unit mismatches are critical!
+                evidence=evidence,
+                validator=self.name,
+                explanation=numeric_explanation,
+                metadata={"numeric_mismatch": True, "critical": True}  # ✅ Add critical flag for arbitrator
+            )
+        
+        # PRIORITY 2: Check temporal drift
         claim_times = self._extract_temporal(claim.text)
         evidence_text = " ".join(e.text for e in evidence)
         evidence_times = self._extract_temporal(evidence_text)

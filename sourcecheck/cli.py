@@ -276,8 +276,16 @@ Examples:
     
     summary = load_document(summary_path)
     
+    # If summary is a string (text file), wrap it in {"body": "..."} format
+    if isinstance(summary, str):
+        summary = {"body": summary}
+        if args.verbose:
+            print(f"Loaded text summary ({len(summary['body'])} characters)")
+    else:
+        if args.verbose:
+            print(f"Loaded {len(summary)} fields from summary")
+    
     if args.verbose:
-        print(f"Loaded {len(summary)} fields from summary")
         print(f"Initializing checker with schema: {schema_path}")
         print(f"                      and policies: {policies_path}")
     

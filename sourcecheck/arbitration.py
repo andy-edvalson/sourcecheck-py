@@ -130,6 +130,10 @@ class ArbitrationEngine:
         """
         Arbitrate between multiple validator results.
         
+        PRIORITY: Critical issues short-circuit normal voting.
+        If any validator returns a critical result, that verdict wins immediately.
+        All validator results are still included for complete reporting.
+        
         Args:
             claim: The claim being validated
             validator_results: Results from all validators
@@ -146,6 +150,39 @@ class ArbitrationEngine:
                 validator="arbitration_engine",
                 explanation="No validator results to arbitrate",
                 validator_results=[]
+            )
+        
+        # PRIORITY 1: Check for critical issues (short-circuit)
+        # Critical issues override all other validators
+        critical_results = [
+            vr for vr in validator_results 
+            if vr.critical  # ✅ Use the critical field directly!
+        ]
+        
+        if critical_results:
+            critical = critical_results[0]
+            explanation = f"CRITICAL ISSUE DETECTED - Short-circuit arbitration: {critical.explanation}"
+            
+            if len(validator_results) > 1:
+                other_verdicts = [
+                    (vr.validator, vr.verdict) 
+                    for vr in validator_results if vr != critical
+                ]
+                explanation += f" (Other validators: {other_verdicts}, but critical issue takes precedence)"
+            
+            logger.info(
+                f"Critical issue short-circuit: {critical.validator} returned critical verdict '{critical.verdict}'"
+            )
+            
+            return Disposition(
+                claim=claim,
+                verdict=critical.verdict,
+                critical=True,  # Mark disposition as critical
+                evidence=evidence,
+                validator=critical.validator,
+                explanation=explanation,
+                validator_results=validator_results,  # Keep all results for complete report
+                confidence=critical.score
             )
         
         if len(validator_results) == 1:
@@ -385,6 +422,10 @@ class ArbitrationEngine:
         # Get verdict with highest score
         final_verdict = max(verdict_scores, key=verdict_scores.get)
         
+        # Calculate confidence as the normalized score of the winning verdict
+        total_weight = sum(verdict_scores.values())
+        confidence = verdict_scores[final_verdict] / total_weight if total_weight > 0 else 0.0
+        
         # Build explanation
         explanation = f"Weighted voting result: {final_verdict}. "
         explanation += f"Scores: {verdict_scores}. "
@@ -402,7 +443,8 @@ class ArbitrationEngine:
             evidence=evidence,
             validator="arbitration_engine",
             explanation=explanation,
-            validator_results=validator_results
+            validator_results=validator_results,
+            confidence=confidence
         )
     
     def _priority_based(
